@@ -122,6 +122,7 @@ app.post("/professor/host/:filename", async (req, res) => {
       return "index.html";
     }
 
+    // If an export/ exists but no index.html inside, try to flatten
     const relIndex = resolveHostedIndex(targetDir);
 
     // Update submissions log

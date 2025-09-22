@@ -452,17 +452,32 @@
 
       function buildExportHtml(src){
         if (!src) return null;
-        // Remove the submit toolbar and any editor panel if present by hiding them in export
-        // Inject a small style block to hide editor-only UI so hosted export is runtime-only
-        const hideCss = '\n<style> .submit-professor{ display:none !important; } #editor-panel{ display:none !important; } </style>\n';
-        // Try to insert right after head tag; if not found, append at end of body
-        if (src.includes('</head>')) {
-          return src.replace('</head>', hideCss + '</head>');
+        try {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(src, 'text/html');
+          // Remove editor UI elements outright
+          const selectors = [
+            '.submit-professor',
+            '#editor-panel',
+            '.editor-panel',
+            '[data-editor]',
+            '[data-dev-ui]'
+          ];
+          selectors.forEach(sel => {
+            doc.querySelectorAll(sel).forEach(el => el.remove());
+          });
+          // As a fallback, also inject CSS to hide anything that might slip through
+          const style = doc.createElement('style');
+          style.textContent = `.submit-professor, #editor-panel, .editor-panel, [data-editor], [data-dev-ui]{ display:none !important; }`;
+          (doc.head || doc.body).appendChild(style);
+          return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+        } catch(e){
+          // Fallback to CSS-hiding if parsing fails
+          const hideCss = '\n<style> .submit-professor, #editor-panel, .editor-panel, [data-editor], [data-dev-ui]{ display:none !important; } </style>\n';
+          if (src.includes('</head>')) return src.replace('</head>', hideCss + '</head>');
+          if (src.includes('</body>')) return src.replace('</body>', hideCss + '</body>');
+          return hideCss + src;
         }
-        if (src.includes('</body>')) {
-          return src.replace('</body>', hideCss + '</body>');
-        }
-        return hideCss + src;
       }
 
       btn.addEventListener('click', async () => {
