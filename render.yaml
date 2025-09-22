@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: immersive-museum-vr
+    name: immersive-museum-maker
     env: node
     plan: free
     buildCommand: npm install
