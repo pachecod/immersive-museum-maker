@@ -4,7 +4,7 @@
   "description": "## About This Project This is a demo virtual world for Syracuse University's Agriquest project in which children in an after-school program learn about food, storytelling and immersive storytelling. It is built using the A-Frame WebXR platform along with custom JavaScript components that enhance the user experience across desktop, mobile, and VR platforms.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node simple-server.js",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
