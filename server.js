@@ -109,10 +109,16 @@ app.post("/professor/host/:filename", async (req, res) => {
     // Determine preferred index path (prefer exported runtime over editor)
     function resolveHostedIndex(dir) {
       const prefer = [
+        // exported runtime variants first
         "export/index.html",
+        "export/index.htm",
+        "Export/index.html",
+        // common build folders
         "dist/index.html",
+        "dist/index.htm",
         "build/index.html",
         "public/index.html",
+        // fallback to root
         "index.html",
       ];
       for (const rel of prefer) {
