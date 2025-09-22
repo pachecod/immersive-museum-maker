@@ -108,24 +108,35 @@ app.post("/professor/host/:filename", async (req, res) => {
 
     // Determine preferred index path (prefer exported runtime over editor)
     function resolveHostedIndex(dir) {
+      // Prefer any nested export/index.html first
+      const stack = [dir];
+      let fallback = null;
+      while (stack.length) {
+        const current = stack.pop();
+        const entries = fs.readdirSync(current, { withFileTypes: true });
+        for (const ent of entries) {
+          const full = path.join(current, ent.name);
+          const rel = path.relative(dir, full);
+          if (ent.isDirectory()) {
+            stack.push(full);
+          } else if (ent.isFile()) {
+            if (/^export[\/\\]index\.html$/i.test(rel)) return rel.replace(/\\/g, '/');
+            if (!fallback && /(^|[\/\\])index\.html$/i.test(rel)) fallback = rel.replace(/\\/g, '/');
+          }
+        }
+      }
+      // If we didn't find nested export, check common build folders at top-level
       const prefer = [
-        // exported runtime variants first
-        "export/index.html",
-        "export/index.htm",
-        "Export/index.html",
-        // common build folders
         "dist/index.html",
-        "dist/index.htm",
         "build/index.html",
         "public/index.html",
-        // fallback to root
         "index.html",
       ];
       for (const rel of prefer) {
         const p = path.join(dir, rel);
-        if (fs.existsSync(p)) return rel; // return relative path under hosted dir
+        if (fs.existsSync(p)) return rel;
       }
-      return "index.html";
+      return fallback || "index.html";
     }
 
     // If an export/ exists but no index.html inside, try to flatten
