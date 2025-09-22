@@ -350,9 +350,13 @@
               <button id="reload-config" class="secondary-btn" style="display: none;">Reload from Server</button>
               <button id="refresh-interface" class="action-btn" style="display: none;">Refresh UI</button>
               <button id="export-config" class="secondary-btn">Export HTML</button>
-              <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
-                <input id="studentName" placeholder="Student name" style="padding:6px 8px; border:1px solid #ddd; border-radius:8px; font-size:13px;" />
-                <input id="projectName" placeholder="Project name" style="padding:6px 8px; border:1px solid #ddd; border-radius:8px; font-size:13px;" />
+              <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start; margin-top:8px;">
+                <label style="font-size:13px; color:#444;">Student name:
+                  <input id="studentName" placeholder="Student name" style="display:block; margin-top:4px; padding:6px 8px; border:1px solid #ddd; border-radius:8px; font-size:13px; width:260px;" />
+                </label>
+                <label style="font-size:13px; color:#444;">Project name:
+                  <input id="projectName" placeholder="Project name" style="display:block; margin-top:4px; padding:6px 8px; border:1px solid #ddd; border-radius:8px; font-size:13px; width:260px;" />
+                </label>
                 <button id="submitToProfessor" class="primary-btn">📤 Submit to Professor</button>
                 <span id="submitStatus" style="font-size:12px;color:#555"></span>
               </div>
