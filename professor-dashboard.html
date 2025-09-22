@@ -29,24 +29,7 @@
 <body>
   <div class="container">
     <h1>Student VR Project Submissions</h1>
-    <div class="muted">Manage student submissions: upload, host, unhost, delete.</div>
-
-    <div class="upload">
-      <h3>Upload Student Project (ZIP)</h3>
-      <form id="uploadForm">
-        <div>
-          <label>Student Name: <input type="text" name="studentName" required /></label>
-        </div>
-        <div>
-          <label>Project Name: <input type="text" name="projectName" required /></label>
-        </div>
-        <div>
-          <input type="file" name="project" accept=".zip" required />
-        </div>
-        <button class="btn" type="submit">Submit Project</button>
-        <span id="uploadStatus" class="muted"></span>
-      </form>
-    </div>
+    <div class="muted">Manage student submissions: host, unhost, delete.</div>
 
     <div id="cards"></div>
   </div>
@@ -118,15 +101,7 @@
       await fetchSubmissions();
     }
 
-    const form = document.getElementById('uploadForm');
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fd = new FormData(form);
-      const res = await fetch('/submit-project', { method: 'POST', body: fd });
-      document.getElementById('uploadStatus').textContent = res.ok ? 'Uploaded!' : 'Upload failed';
-      form.reset();
-      await fetchSubmissions();
-    });
+    // Upload form removed per request
 
     fetchSubmissions();
   </script>
