@@ -108,23 +108,26 @@ app.post("/professor/host/:filename", async (req, res) => {
 
     // Determine preferred index path (prefer exported runtime over editor)
     function resolveHostedIndex(dir) {
-      // Prefer any nested export/index.html first
+      // Prefer any nested export/index.html first (even if export is inside a subfolder)
       const stack = [dir];
       let fallback = null;
+      let exportCandidate = null;
       while (stack.length) {
         const current = stack.pop();
         const entries = fs.readdirSync(current, { withFileTypes: true });
         for (const ent of entries) {
           const full = path.join(current, ent.name);
-          const rel = path.relative(dir, full);
+          const rel = path.relative(dir, full).replace(/\\/g, '/');
           if (ent.isDirectory()) {
             stack.push(full);
           } else if (ent.isFile()) {
-            if (/^export[\/\\]index\.html$/i.test(rel)) return rel.replace(/\\/g, '/');
-            if (!fallback && /(^|[\/\\])index\.html$/i.test(rel)) fallback = rel.replace(/\\/g, '/');
+            // Capture any path that ends with /export/index.html
+            if (/\/export\/index\.html$/i.test(rel)) exportCandidate = rel;
+            if (!fallback && /(^|\/)index\.html$/i.test(rel)) fallback = rel;
           }
         }
       }
+      if (exportCandidate) return exportCandidate;
       // If we didn't find nested export, check common build folders at top-level
       const prefer = [
         "dist/index.html",
