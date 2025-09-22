@@ -143,7 +143,11 @@ app.post("/professor/host/:filename", async (req, res) => {
     }
 
     // If an export/ exists but no index.html inside, try to flatten
-    const relIndex = resolveHostedIndex(targetDir);
+    // Strong preference: exported runtime html
+    const exportRel = fs.existsSync(path.join(targetDir, 'export', 'index.html'))
+      ? 'export/index.html'
+      : null;
+    const relIndex = exportRel || resolveHostedIndex(targetDir);
 
     // Update submissions log
     const logs = fs.existsSync(submissionsLog)
