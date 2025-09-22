@@ -82,3 +82,8 @@ jspm_packages/
 
 # Local templates
 InspiringCode/
+
+# Local runtime data
+hosted-projects/
+student-projects/
+submissions.json
