@@ -499,17 +499,37 @@
             const htmlContent = modelEditor.generateStandaloneHTML();
             if (htmlContent) {
               zip.folder('export').file('index.html', htmlContent);
+              // Also place runtime dependencies next to export index so relative paths resolve
+              const cssText = await fetchTextSafely('style.css');
+              if (cssText !== null) zip.folder('export').file('style.css', cssText);
+              const jsText = await fetchTextSafely('script.js');
+              if (jsText !== null) zip.folder('export').file('script.js', jsText);
+              const cfgText = await fetchTextSafely('config.json');
+              if (cfgText !== null) zip.folder('export').file('config.json', cfgText);
             }
           } else {
             // Fallback: strip editor UI from current index.html
             const indexTxt = await fetchTextSafely('index.html');
             const exportHtml = buildExportHtml(indexTxt);
             if (exportHtml) zip.folder('export').file('index.html', exportHtml);
+            // Include dependencies next to export index
+            const cssText = await fetchTextSafely('style.css');
+            if (cssText !== null) zip.folder('export').file('style.css', cssText);
+            const jsText = await fetchTextSafely('script.js');
+            if (jsText !== null) zip.folder('export').file('script.js', jsText);
+            const cfgText = await fetchTextSafely('config.json');
+            if (cfgText !== null) zip.folder('export').file('config.json', cfgText);
           }
         } catch(e) {
           const indexTxt = await fetchTextSafely('index.html');
           const exportHtml = buildExportHtml(indexTxt);
           if (exportHtml) zip.folder('export').file('index.html', exportHtml);
+          const cssText = await fetchTextSafely('style.css');
+          if (cssText !== null) zip.folder('export').file('style.css', cssText);
+          const jsText = await fetchTextSafely('script.js');
+          if (jsText !== null) zip.folder('export').file('script.js', jsText);
+          const cfgText = await fetchTextSafely('config.json');
+          if (cfgText !== null) zip.folder('export').file('config.json', cfgText);
         }
 
         const blob = await zip.generateAsync({ type: 'blob' });
