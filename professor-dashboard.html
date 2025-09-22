@@ -64,6 +64,12 @@
       items.forEach((item) => {
         const hosted = !!item.isHosted;
         const hostedUrl = item.hostedUrl;
+        // Derive a readable path label from hostedUrl, e.g., "Bob/export/index.html"
+        let hostedLabel = '';
+        if (hosted && hostedUrl) {
+          const m = hostedUrl.match(/\/hosted\/(.*)$/);
+          hostedLabel = m ? m[1] : hostedUrl;
+        }
         const div = document.createElement('div');
         div.className = 'card';
         div.innerHTML = `
@@ -71,7 +77,7 @@
           <div class="meta"><b>Student:</b> ${item.studentName || ''}</div>
           <div class="meta"><b>Submitted:</b> ${new Date(item.submittedAt).toLocaleString()}</div>
           <div class="meta"><b>File:</b> ${item.fileName}</div>
-          <div class="host-row"><b>🌐 Hosted at:</b> ${hosted && hostedUrl ? `<a class=\"host-link\" href=\"${hostedUrl}\" target=\"_blank\">${(item.hostedPath||'open').replace(/_/g,' ')}</a>` : '<span class=\"muted\">not hosted</span>'}</div>
+          <div class="host-row"><b>🌐 Hosted at:</b> ${hosted && hostedUrl ? `<a class=\"host-link\" href=\"${hostedUrl}\" target=\"_blank\">${hostedLabel}</a>` : '<span class=\"muted\">not hosted</span>'}</div>
           ${hosted && item.hostedAt ? `<div class=\"meta\"><b>Hosted on:</b> ${new Date(item.hostedAt).toLocaleString()}</div>` : ''}
           <div class="row" style="margin-top:12px">
             <a class="btn blue" href="/professor/download/${item.fileName}">⬇️ Download</a>
