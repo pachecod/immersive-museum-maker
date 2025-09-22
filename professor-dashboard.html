@@ -63,7 +63,11 @@
       list.innerHTML = '';
       items.forEach((item) => {
         const hosted = !!item.isHosted;
-        const hostedUrl = item.hostedUrl;
+        let hostedUrl = item.hostedUrl;
+        // Prefer export/index.html in the link if backend stored root index.html
+        if (hostedUrl && /\/index\.html$/i.test(hostedUrl) && !/\/export\/index\.html$/i.test(hostedUrl)) {
+          hostedUrl = hostedUrl.replace(/\/index\.html$/i, '/export/index.html');
+        }
         // Derive a readable path label from hostedUrl, e.g., "Bob/export/index.html"
         let hostedLabel = '';
         if (hosted && hostedUrl) {
