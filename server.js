@@ -189,6 +189,28 @@ app.delete("/professor/delete/:filename", (req, res) => {
   }
 });
 
+// Professor: download original ZIP
+app.get("/professor/download/:filename", (req, res) => {
+  try {
+    const zipPath = path.join(submissionsDir, req.params.filename);
+    if (!fs.existsSync(zipPath)) {
+      return res.status(404).json({ error: "File not found" });
+    }
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${req.params.filename}"`
+    );
+    res.setHeader("Content-Type", "application/zip");
+    res.download(zipPath, req.params.filename, (err) => {
+      if (err && !res.headersSent) {
+        res.status(500).json({ error: "Download failed" });
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`🌐 Immersive Museum VR Experience running on port ${PORT}`);

@@ -23,9 +23,22 @@
     
     <!-- External Script -->
     <script src="script.js"></script>
+    <style>
+      /* lightweight submit UI */
+      .submit-professor { position: fixed; right: 16px; top: 16px; z-index: 9999; display: flex; gap: 6px; align-items: center; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; padding: 8px 10px; border-radius: 10px; }
+      .submit-professor input { padding: 6px 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; }
+      .submit-professor button { padding: 6px 10px; border: 1px solid #ddd; background: #f8f9fa; border-radius: 8px; cursor: pointer; font-size: 13px; }
+    </style>
   </head>
 
   <body>
+    <div class="submit-professor">
+      <input id="studentName" placeholder="Student name" />
+      <input id="projectName" placeholder="Project name" />
+      <button id="submitToProfessor">📤 Submit to Professor</button>
+      <span id="submitStatus" style="font-size:12px;color:#555"></span>
+    </div>
+
     <a-scene 
       loading-manager
       cursor="rayOrigin: mouse" 
@@ -427,4 +440,45 @@
       
     </a-scene>
   </body>
+  <script>
+    // Zip and submit essential project files to /submit-project
+    (function(){
+      const btn = document.getElementById('submitToProfessor');
+      if (!btn || !window.JSZip) return;
+
+      async function fetchTextSafely(path){
+        try { const r = await fetch(path); return r.ok ? await r.text() : null; } catch { return null; }
+      }
+
+      btn.addEventListener('click', async () => {
+        const studentName = document.getElementById('studentName').value || 'Student';
+        const projectName = document.getElementById('projectName').value || 'VR_Project';
+        const statusEl = document.getElementById('submitStatus');
+        statusEl.textContent = 'Zipping...';
+
+        const zip = new JSZip();
+        const files = ['index.html','script.js','style.css','config.json'];
+        for (const f of files){
+          const txt = await fetchTextSafely(f);
+          if (txt !== null) zip.file(f, txt);
+        }
+
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const fd = new FormData();
+        fd.append('studentName', studentName);
+        fd.append('projectName', projectName);
+        const safe = studentName.replace(/[^a-zA-Z0-9_-]/g,'_');
+        fd.append('project', new File([blob], `${safe}_${Date.now()}.zip`, { type: 'application/zip' }));
+
+        statusEl.textContent = 'Uploading...';
+        try {
+          const res = await fetch('/submit-project', { method: 'POST', body: fd });
+          statusEl.textContent = res.ok ? 'Submitted!' : 'Submission failed';
+        } catch(e){
+          statusEl.textContent = 'Submission failed';
+        }
+        setTimeout(()=> statusEl.textContent = '', 3000);
+      });
+    })();
+  </script>
 </html>
