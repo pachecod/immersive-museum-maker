@@ -23,9 +23,17 @@
     
     <!-- External Script -->
     <script src="script.js"></script>
+    <style>
+      /* lightweight submit UI */
+      .submit-professor { position: fixed; right: 16px; top: 16px; z-index: 9999; display: flex; gap: 6px; align-items: center; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; padding: 8px 10px; border-radius: 10px; }
+      .submit-professor input { padding: 6px 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; }
+      .submit-professor button { padding: 6px 10px; border: 1px solid #ddd; background: #f8f9fa; border-radius: 8px; cursor: pointer; font-size: 13px; }
+    </style>
   </head>
 
   <body>
+    
+
     <a-scene 
       loading-manager
       cursor="rayOrigin: mouse" 
@@ -335,13 +343,24 @@
           
           <!-- Configuration Management -->
           <div class="editor-section">
-            <h4>Configuration</h4>
+            <h4>Saving and Loading</h4>
             <div class="config-actions">
               <button id="save-config" class="primary-btn">Save Config</button>
               <button id="load-config" class="secondary-btn">Load Config</button>
               <button id="reload-config" class="secondary-btn" style="display: none;">Reload from Server</button>
               <button id="refresh-interface" class="action-btn" style="display: none;">Refresh UI</button>
               <button id="export-config" class="secondary-btn">Export HTML</button>
+              <h4 style="color:#198754; margin:12px 0 4px;">Submission</h4>
+              <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
+                <label style="font-size:13px; color:#444;">Student name:
+                  <input id="studentName" placeholder="Student name" style="display:block; margin-top:4px; padding:6px 8px; border:1px solid #ddd; border-radius:8px; font-size:13px; width:260px;" />
+                </label>
+                <label style="font-size:13px; color:#444;">Project name:
+                  <input id="projectName" placeholder="Project name" style="display:block; margin-top:4px; padding:6px 8px; border:1px solid #ddd; border-radius:8px; font-size:13px; width:260px;" />
+                </label>
+                <button id="submitToProfessor" class="primary-btn">📤 Submit to Professor</button>
+                <span id="submitStatus" style="font-size:12px;color:#555"></span>
+              </div>
               <button id="import-config" class="secondary-btn" style="display: none;">Import</button>
               <button id="compile-scene" class="primary-btn" style="background: #e74c3c; margin-top: 10px; display: none;">🎬 Compile New Scene</button>
               <button id="save-public-scene" class="primary-btn" style="background: #9b59b6; margin-top: 5px; display: none;">🌐 Save Public Scene</button>
@@ -427,4 +446,114 @@
       
     </a-scene>
   </body>
+  <script>
+    // Zip and submit essential project files to /submit-project
+    (function(){
+      const btn = document.getElementById('submitToProfessor');
+      if (!btn || !window.JSZip) return;
+
+      async function fetchTextSafely(path){
+        try { const r = await fetch(path); return r.ok ? await r.text() : null; } catch { return null; }
+      }
+
+      function buildExportHtml(src){
+        if (!src) return null;
+        try {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(src, 'text/html');
+          // Remove editor UI elements outright
+          const selectors = [
+            '.submit-professor',
+            '#editor-panel',
+            '.editor-panel',
+            '[data-editor]',
+            '[data-dev-ui]'
+          ];
+          selectors.forEach(sel => {
+            doc.querySelectorAll(sel).forEach(el => el.remove());
+          });
+          // As a fallback, also inject CSS to hide anything that might slip through
+          const style = doc.createElement('style');
+          style.textContent = `.submit-professor, #editor-panel, .editor-panel, [data-editor], [data-dev-ui]{ display:none !important; }`;
+          (doc.head || doc.body).appendChild(style);
+          return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+        } catch(e){
+          // Fallback to CSS-hiding if parsing fails
+          const hideCss = '\n<style> .submit-professor, #editor-panel, .editor-panel, [data-editor], [data-dev-ui]{ display:none !important; } </style>\n';
+          if (src.includes('</head>')) return src.replace('</head>', hideCss + '</head>');
+          if (src.includes('</body>')) return src.replace('</body>', hideCss + '</body>');
+          return hideCss + src;
+        }
+      }
+
+      btn.addEventListener('click', async () => {
+        const studentName = document.getElementById('studentName').value || 'Student';
+        const projectName = document.getElementById('projectName').value || 'VR_Project';
+        const statusEl = document.getElementById('submitStatus');
+        statusEl.textContent = 'Zipping...';
+
+        const zip = new JSZip();
+        const files = ['index.html','script.js','style.css','config.json'];
+        for (const f of files){
+          const txt = await fetchTextSafely(f);
+          if (txt !== null) zip.file(f, txt);
+        }
+
+        // Add exported runtime HTML using the editor's own export pipeline
+        try {
+          if (window.modelEditor && typeof modelEditor.generateStandaloneHTML === 'function') {
+            const htmlContent = modelEditor.generateStandaloneHTML();
+            if (htmlContent) {
+              zip.folder('export').file('index.html', htmlContent);
+              // Also place runtime dependencies next to export index so relative paths resolve
+              const cssText = await fetchTextSafely('style.css');
+              if (cssText !== null) zip.folder('export').file('style.css', cssText);
+              const jsText = await fetchTextSafely('script.js');
+              if (jsText !== null) zip.folder('export').file('script.js', jsText);
+              const cfgText = await fetchTextSafely('config.json');
+              if (cfgText !== null) zip.folder('export').file('config.json', cfgText);
+            }
+          } else {
+            // Fallback: strip editor UI from current index.html
+            const indexTxt = await fetchTextSafely('index.html');
+            const exportHtml = buildExportHtml(indexTxt);
+            if (exportHtml) zip.folder('export').file('index.html', exportHtml);
+            // Include dependencies next to export index
+            const cssText = await fetchTextSafely('style.css');
+            if (cssText !== null) zip.folder('export').file('style.css', cssText);
+            const jsText = await fetchTextSafely('script.js');
+            if (jsText !== null) zip.folder('export').file('script.js', jsText);
+            const cfgText = await fetchTextSafely('config.json');
+            if (cfgText !== null) zip.folder('export').file('config.json', cfgText);
+          }
+        } catch(e) {
+          const indexTxt = await fetchTextSafely('index.html');
+          const exportHtml = buildExportHtml(indexTxt);
+          if (exportHtml) zip.folder('export').file('index.html', exportHtml);
+          const cssText = await fetchTextSafely('style.css');
+          if (cssText !== null) zip.folder('export').file('style.css', cssText);
+          const jsText = await fetchTextSafely('script.js');
+          if (jsText !== null) zip.folder('export').file('script.js', jsText);
+          const cfgText = await fetchTextSafely('config.json');
+          if (cfgText !== null) zip.folder('export').file('config.json', cfgText);
+        }
+
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const fd = new FormData();
+        fd.append('studentName', studentName);
+        fd.append('projectName', projectName);
+        const safe = studentName.replace(/[^a-zA-Z0-9_-]/g,'_');
+        fd.append('project', new File([blob], `${safe}_${Date.now()}.zip`, { type: 'application/zip' }));
+
+        statusEl.textContent = 'Uploading...';
+        try {
+          const res = await fetch('/submit-project', { method: 'POST', body: fd });
+          statusEl.textContent = res.ok ? 'Submitted!' : 'Submission failed';
+        } catch(e){
+          statusEl.textContent = 'Submission failed';
+        }
+        setTimeout(()=> statusEl.textContent = '', 3000);
+      });
+    })();
+  </script>
 </html>

@@ -79,3 +79,11 @@ jspm_packages/
 .dynamodb/
 
 
+
+# Local templates
+InspiringCode/
+
+# Local runtime data
+hosted-projects/
+student-projects/
+submissions.json

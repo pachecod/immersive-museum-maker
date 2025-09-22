@@ -1,12 +1,29 @@
 // Express server for Immersive Museum VR Experience
 const express = require("express");
 const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
+const unzipper = require("unzipper");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Serve static files from the root directory
 app.use(express.static("."));
+app.use(express.json());
+
+// Data directories
+const submissionsDir = path.join(__dirname, "student-projects");
+const hostedDirRoot = path.join(__dirname, "hosted-projects");
+const submissionsLog = path.join(__dirname, "submissions.json");
+
+// Ensure folders exist
+for (const dir of [submissionsDir, hostedDirRoot]) {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+// Multer upload config
+const upload = multer({ dest: submissionsDir });
 
 // Serve the main VR experience
 app.get("/", (req, res) => {
@@ -20,6 +37,221 @@ app.get("/health", (req, res) => {
     message: "Immersive Museum VR Experience is running",
     timestamp: new Date().toISOString()
   });
+});
+
+// Professor API: list submissions
+app.get("/professor/submissions", (req, res) => {
+  try {
+    if (!fs.existsSync(submissionsLog)) return res.json([]);
+    const logs = fs
+      .readFileSync(submissionsLog, "utf8")
+      .split("\n")
+      .filter((l) => l.trim())
+      .map((l) => JSON.parse(l));
+    res.json(logs);
+  } catch (e) {
+    res.status(500).json({ error: "Unable to read submissions" });
+  }
+});
+
+// Student: submit project zip
+app.post("/submit-project", upload.single("project"), (req, res) => {
+  try {
+    const { studentName = "anonymous", projectName = "untitled" } = req.body || {};
+    const projectFile = req.file;
+    if (!projectFile) return res.status(400).json({ error: "No file uploaded" });
+
+    const safeStudent = String(studentName).replace(/[^a-zA-Z0-9_-]/g, "_");
+    const fileName = `${safeStudent}_${Date.now()}.zip`;
+    const finalPath = path.join(submissionsDir, fileName);
+    fs.renameSync(projectFile.path, finalPath);
+
+    const submission = {
+      studentName,
+      projectName,
+      fileName,
+      filePath: finalPath,
+      submittedAt: new Date().toISOString(),
+      isHosted: false,
+    };
+    fs.appendFileSync(submissionsLog, JSON.stringify(submission) + "\n");
+
+    res.json({ success: true, message: "Project submitted", fileName });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Professor: host a submission at /hosted/:urlPath
+app.use("/hosted", express.static(hostedDirRoot));
+app.post("/professor/host/:filename", async (req, res) => {
+  try {
+    const { filename } = req.params;
+    const { urlPath } = req.body || {};
+    if (!urlPath || !/^[a-zA-Z0-9_-]+$/.test(urlPath)) {
+      return res.status(400).json({ success: false, message: "Invalid urlPath" });
+    }
+
+    const zipPath = path.join(submissionsDir, filename);
+    if (!fs.existsSync(zipPath)) return res.status(404).json({ success: false, message: "File not found" });
+
+    const targetDir = path.join(hostedDirRoot, urlPath);
+    if (fs.existsSync(targetDir)) fs.rmSync(targetDir, { recursive: true, force: true });
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    await new Promise((resolve, reject) => {
+      fs.createReadStream(zipPath)
+        .pipe(unzipper.Extract({ path: targetDir }))
+        .on("close", resolve)
+        .on("error", reject);
+    });
+
+    // Determine preferred index path (prefer exported runtime over editor)
+    function resolveHostedIndex(dir) {
+      // Prefer any nested export/index.html first (even if export is inside a subfolder)
+      const stack = [dir];
+      let fallback = null;
+      let exportCandidate = null;
+      while (stack.length) {
+        const current = stack.pop();
+        const entries = fs.readdirSync(current, { withFileTypes: true });
+        for (const ent of entries) {
+          const full = path.join(current, ent.name);
+          const rel = path.relative(dir, full).replace(/\\/g, '/');
+          if (ent.isDirectory()) {
+            stack.push(full);
+          } else if (ent.isFile()) {
+            // Capture any path that ends with /export/index.html
+            if (/\/export\/index\.html$/i.test(rel)) exportCandidate = rel;
+            if (!fallback && /(^|\/)index\.html$/i.test(rel)) fallback = rel;
+          }
+        }
+      }
+      if (exportCandidate) return exportCandidate;
+      // If we didn't find nested export, check common build folders at top-level
+      const prefer = [
+        "dist/index.html",
+        "build/index.html",
+        "public/index.html",
+        "index.html",
+      ];
+      for (const rel of prefer) {
+        const p = path.join(dir, rel);
+        if (fs.existsSync(p)) return rel;
+      }
+      return fallback || "index.html";
+    }
+
+    // If an export/ exists but no index.html inside, try to flatten
+    // Strong preference: exported runtime html
+    const exportRel = fs.existsSync(path.join(targetDir, 'export', 'index.html'))
+      ? 'export/index.html'
+      : null;
+    const relIndex = exportRel || resolveHostedIndex(targetDir);
+
+    // Update submissions log
+    const logs = fs.existsSync(submissionsLog)
+      ? fs
+          .readFileSync(submissionsLog, "utf8")
+          .split("\n")
+          .filter((l) => l.trim())
+          .map((l) => JSON.parse(l))
+      : [];
+    const updated = logs.map((s) => {
+      if (s.fileName === filename) {
+        s.isHosted = true;
+        s.hostedPath = urlPath;
+        s.hostedUrl = `/hosted/${urlPath}/${relIndex}`;
+        s.hostedAt = new Date().toISOString();
+      }
+      return s;
+    });
+    fs.writeFileSync(submissionsLog, updated.map((s) => JSON.stringify(s)).join("\n") + (updated.length ? "\n" : ""));
+
+    const hostedUrl = `${req.protocol}://${req.get("host")}/hosted/${urlPath}/${relIndex}`;
+    res.json({ success: true, hostedUrl, urlPath });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Professor: unhost
+app.post("/professor/unhost/:filename", (req, res) => {
+  try {
+    if (!fs.existsSync(submissionsLog)) return res.status(404).json({ success: false, message: "No submissions" });
+    const logs = fs
+      .readFileSync(submissionsLog, "utf8")
+      .split("\n")
+      .filter((l) => l.trim())
+      .map((l) => JSON.parse(l));
+    const sub = logs.find((s) => s.fileName === req.params.filename);
+    if (!sub) return res.status(404).json({ success: false, message: "Submission not found" });
+    const hostedPath = sub.hostedPath || (sub.hostedUrl && (sub.hostedUrl.match(/\/hosted\/([^/]+)/) || [])[1]);
+    if (hostedPath) {
+      const dir = path.join(hostedDirRoot, hostedPath);
+      if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+    }
+    const updated = logs.map((s) => {
+      if (s.fileName === req.params.filename) {
+        delete s.hostedUrl;
+        delete s.hostedPath;
+        delete s.hostedAt;
+        s.isHosted = false;
+      }
+      return s;
+    });
+    fs.writeFileSync(submissionsLog, updated.map((s) => JSON.stringify(s)).join("\n") + (updated.length ? "\n" : ""));
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Professor: delete
+app.delete("/professor/delete/:filename", (req, res) => {
+  try {
+    const zipPath = path.join(submissionsDir, req.params.filename);
+    if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+    if (fs.existsSync(submissionsLog)) {
+      const logs = fs
+        .readFileSync(submissionsLog, "utf8")
+        .split("\n")
+        .filter((l) => l.trim())
+        .map((l) => JSON.parse(l));
+      const sub = logs.find((s) => s.fileName === req.params.filename);
+      if (sub && sub.hostedPath) {
+        const dir = path.join(hostedDirRoot, sub.hostedPath);
+        if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+      }
+      const updated = logs.filter((s) => s.fileName !== req.params.filename);
+      fs.writeFileSync(submissionsLog, updated.map((s) => JSON.stringify(s)).join("\n") + (updated.length ? "\n" : ""));
+    }
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Professor: download original ZIP
+app.get("/professor/download/:filename", (req, res) => {
+  try {
+    const zipPath = path.join(submissionsDir, req.params.filename);
+    if (!fs.existsSync(zipPath)) {
+      return res.status(404).json({ error: "File not found" });
+    }
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${req.params.filename}"`
+    );
+    res.setHeader("Content-Type", "application/zip");
+    res.download(zipPath, req.params.filename, (err) => {
+      if (err && !res.headersSent) {
+        res.status(500).json({ error: "Download failed" });
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Start the server
