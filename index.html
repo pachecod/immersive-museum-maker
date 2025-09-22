@@ -493,11 +493,23 @@
           if (txt !== null) zip.file(f, txt);
         }
 
-        // Add exported runtime HTML under export/index.html so hosting picks it
-        const indexTxt = await fetchTextSafely('index.html');
-        const exportHtml = buildExportHtml(indexTxt);
-        if (exportHtml) {
-          zip.folder('export').file('index.html', exportHtml);
+        // Add exported runtime HTML using the editor's own export pipeline
+        try {
+          if (window.modelEditor && typeof modelEditor.generateStandaloneHTML === 'function') {
+            const htmlContent = modelEditor.generateStandaloneHTML();
+            if (htmlContent) {
+              zip.folder('export').file('index.html', htmlContent);
+            }
+          } else {
+            // Fallback: strip editor UI from current index.html
+            const indexTxt = await fetchTextSafely('index.html');
+            const exportHtml = buildExportHtml(indexTxt);
+            if (exportHtml) zip.folder('export').file('index.html', exportHtml);
+          }
+        } catch(e) {
+          const indexTxt = await fetchTextSafely('index.html');
+          const exportHtml = buildExportHtml(indexTxt);
+          if (exportHtml) zip.folder('export').file('index.html', exportHtml);
         }
 
         const blob = await zip.generateAsync({ type: 'blob' });
