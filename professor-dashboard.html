@@ -3,58 +3,53 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Professor Dashboard - Immersive Museum</title>
+  <title>Student VR Project Submissions</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
-    h1 { margin-bottom: 8px; }
-    .actions { display: flex; gap: 8px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-    th, td { border: 1px solid #ddd; padding: 8px; font-size: 14px; }
-    th { background: #f6f6f6; text-align: left; }
-    .badge { padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-    .hosted { background: #e6ffed; color: #05630b; border: 1px solid #a6f0b5; }
-    .not-hosted { background: #fff5e6; color: #8a4b00; border: 1px solid #ffd89c; }
-    .upload { margin-top: 16px; border: 1px solid #ddd; padding: 12px; border-radius: 8px; }
-    .muted { color: #666; font-size: 13px; }
-    input[type="text"] { padding: 6px 8px; font-size: 14px; }
+    :root { --blue:#0d6efd; --green:#198754; --yellow:#ffc107; --red:#dc3545; --muted:#6c757d; }
+    *{ box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; color:#212529; }
+    h1 { margin-bottom: 16px; font-size: 40px; font-weight: 800; }
+    .container{ max-width: 980px; margin: 0 auto; }
+    .card{ border:1px solid #e5e7eb; border-radius: 12px; padding: 18px; margin:16px 0; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+    .title{ font-size: 26px; font-weight: 800; margin:0 0 8px; }
+    .meta{ color:#495057; margin:6px 0; }
+    .host-row{ margin:8px 0; }
+    .host-link{ color:#198754; font-weight: 800; text-decoration: none; }
+    .btn{ display:inline-flex; align-items:center; gap:8px; background:#f8f9fa; border:1px solid #dee2e6; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600; text-decoration:none; color:#212529; }
+    .btn.blue{ background:#e7f1ff; border-color:#b6d4fe; color:#0d6efd; }
+    .btn.yellow{ background:#fff3cd; border-color:#ffec99; color:#8a6d3b; }
+    .btn.red{ background:#f8d7da; border-color:#f1aeb5; color:#842029; }
+    .row{ display:flex; gap:12px; flex-wrap: wrap; }
+    .upload { margin-top: 16px; border: 1px solid #e5e7eb; padding: 16px; border-radius: 12px; }
+    .muted { color: var(--muted); font-size: 13px; }
+    input[type="text"] { padding: 8px 10px; font-size: 14px; border:1px solid #dee2e6; border-radius:8px; }
     input[type="file"] { font-size: 14px; }
-    button { padding: 6px 10px; font-size: 14px; cursor: pointer; }
-    .link { color: #0a58ca; text-decoration: none; }
   </style>
 </head>
 <body>
-  <h1>Professor Dashboard</h1>
-  <div class="muted">Manage student submissions: upload, host, unhost, delete.</div>
+  <div class="container">
+    <h1>Student VR Project Submissions</h1>
+    <div class="muted">Manage student submissions: upload, host, unhost, delete.</div>
 
-  <div class="upload">
-    <h3>Upload Student Project (ZIP)</h3>
-    <form id="uploadForm">
-      <div>
-        <label>Student Name: <input type="text" name="studentName" required /></label>
-      </div>
-      <div>
-        <label>Project Name: <input type="text" name="projectName" required /></label>
-      </div>
-      <div>
-        <input type="file" name="project" accept=".zip" required />
-      </div>
-      <button type="submit">Submit Project</button>
-      <span id="uploadStatus" class="muted"></span>
-    </form>
+    <div class="upload">
+      <h3>Upload Student Project (ZIP)</h3>
+      <form id="uploadForm">
+        <div>
+          <label>Student Name: <input type="text" name="studentName" required /></label>
+        </div>
+        <div>
+          <label>Project Name: <input type="text" name="projectName" required /></label>
+        </div>
+        <div>
+          <input type="file" name="project" accept=".zip" required />
+        </div>
+        <button class="btn" type="submit">Submit Project</button>
+        <span id="uploadStatus" class="muted"></span>
+      </form>
+    </div>
+
+    <div id="cards"></div>
   </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th>Student</th>
-        <th>Project</th>
-        <th>Submitted</th>
-        <th>Status</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody id="rows"></tbody>
-  </table>
 
   <script>
     async function fetchSubmissions() {
@@ -64,38 +59,38 @@
     }
 
     function renderRows(items) {
-      const tbody = document.getElementById('rows');
-      tbody.innerHTML = '';
+      const list = document.getElementById('cards');
+      list.innerHTML = '';
       items.forEach((item) => {
-        const tr = document.createElement('tr');
         const hosted = !!item.isHosted;
         const hostedUrl = item.hostedUrl;
-        tr.innerHTML = `
-          <td>${item.studentName || ''}</td>
-          <td>${item.projectName || ''}</td>
-          <td>${new Date(item.submittedAt).toLocaleString()}</td>
-          <td>
-            <span class="badge ${hosted ? 'hosted' : 'not-hosted'}">${hosted ? 'Hosted' : 'Not Hosted'}</span>
-            ${hosted && hostedUrl ? ` - <a class="link" href="${hostedUrl}" target="_blank">View</a>` : ''}
-          </td>
-          <td>
-            <div class="actions">
-              <input type="text" placeholder="url-path" value="${(item.studentName || 'student').replace(/[^a-zA-Z0-9_-]/g,'_')}" id="url-${item.fileName}">
-              <button onclick="host('${item.fileName}')">Host</button>
-              <button onclick="unhost('${item.fileName}')">Unhost</button>
-              <button onclick="del('${item.fileName}')">Delete</button>
-              <a class="link" href="/professor/download/${item.fileName}">Download ZIP</a>
-            </div>
-          </td>
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `
+          <div class="title">${(item.projectName || '').replace(/_/g,' ')}</div>
+          <div class="meta"><b>Student:</b> ${item.studentName || ''}</div>
+          <div class="meta"><b>Submitted:</b> ${new Date(item.submittedAt).toLocaleString()}</div>
+          <div class="meta"><b>File:</b> ${item.fileName}</div>
+          <div class="host-row"><b>🌐 Hosted at:</b> ${hosted && hostedUrl ? `<a class=\"host-link\" href=\"${hostedUrl}\" target=\"_blank\">${(item.hostedPath||'open').replace(/_/g,' ')}</a>` : '<span class=\"muted\">not hosted</span>'}</div>
+          ${hosted && item.hostedAt ? `<div class=\"meta\"><b>Hosted on:</b> ${new Date(item.hostedAt).toLocaleString()}</div>` : ''}
+          <div class="row" style="margin-top:12px">
+            <a class="btn blue" href="/professor/download/${item.fileName}">⬇️ Download</a>
+            <button class="btn yellow" onclick="unhost('${item.fileName}')">🔗 Unhost</button>
+            <button class="btn red" onclick="del('${item.fileName}')">🗑️ Delete</button>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <input type="text" placeholder="url-path" value="${(item.studentName || 'student').replace(/[^a-zA-Z0-9_-]/g,'_')}" id="url-${item.fileName}">
+            <button class="btn" onclick="host('${item.fileName}')">🌐 Host</button>
+          </div>
         `;
-        tbody.appendChild(tr);
+        list.appendChild(div);
       });
     }
 
     async function host(filename) {
       const input = document.getElementById(`url-${filename}`);
       const urlPath = input.value.trim();
-      const res = await fetch(`/professor/host/${filename}`, {
+      await fetch(`/professor/host/${filename}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ urlPath })
