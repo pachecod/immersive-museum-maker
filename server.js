@@ -106,6 +106,24 @@ app.post("/professor/host/:filename", async (req, res) => {
         .on("error", reject);
     });
 
+    // Determine preferred index path (prefer exported runtime over editor)
+    function resolveHostedIndex(dir) {
+      const prefer = [
+        "export/index.html",
+        "dist/index.html",
+        "build/index.html",
+        "public/index.html",
+        "index.html",
+      ];
+      for (const rel of prefer) {
+        const p = path.join(dir, rel);
+        if (fs.existsSync(p)) return rel; // return relative path under hosted dir
+      }
+      return "index.html";
+    }
+
+    const relIndex = resolveHostedIndex(targetDir);
+
     // Update submissions log
     const logs = fs.existsSync(submissionsLog)
       ? fs
@@ -118,14 +136,14 @@ app.post("/professor/host/:filename", async (req, res) => {
       if (s.fileName === filename) {
         s.isHosted = true;
         s.hostedPath = urlPath;
-        s.hostedUrl = `/hosted/${urlPath}/index.html`;
+        s.hostedUrl = `/hosted/${urlPath}/${relIndex}`;
         s.hostedAt = new Date().toISOString();
       }
       return s;
     });
     fs.writeFileSync(submissionsLog, updated.map((s) => JSON.stringify(s)).join("\n") + (updated.length ? "\n" : ""));
 
-    const hostedUrl = `${req.protocol}://${req.get("host")}/hosted/${urlPath}/index.html`;
+    const hostedUrl = `${req.protocol}://${req.get("host")}/hosted/${urlPath}/${relIndex}`;
     res.json({ success: true, hostedUrl, urlPath });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
