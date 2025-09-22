@@ -450,6 +450,21 @@
         try { const r = await fetch(path); return r.ok ? await r.text() : null; } catch { return null; }
       }
 
+      function buildExportHtml(src){
+        if (!src) return null;
+        // Remove the submit toolbar and any editor panel if present by hiding them in export
+        // Inject a small style block to hide editor-only UI so hosted export is runtime-only
+        const hideCss = '\n<style> .submit-professor{ display:none !important; } #editor-panel{ display:none !important; } </style>\n';
+        // Try to insert right after head tag; if not found, append at end of body
+        if (src.includes('</head>')) {
+          return src.replace('</head>', hideCss + '</head>');
+        }
+        if (src.includes('</body>')) {
+          return src.replace('</body>', hideCss + '</body>');
+        }
+        return hideCss + src;
+      }
+
       btn.addEventListener('click', async () => {
         const studentName = document.getElementById('studentName').value || 'Student';
         const projectName = document.getElementById('projectName').value || 'VR_Project';
@@ -461,6 +476,13 @@
         for (const f of files){
           const txt = await fetchTextSafely(f);
           if (txt !== null) zip.file(f, txt);
+        }
+
+        // Add exported runtime HTML under export/index.html so hosting picks it
+        const indexTxt = await fetchTextSafely('index.html');
+        const exportHtml = buildExportHtml(indexTxt);
+        if (exportHtml) {
+          zip.folder('export').file('index.html', exportHtml);
         }
 
         const blob = await zip.generateAsync({ type: 'blob' });
