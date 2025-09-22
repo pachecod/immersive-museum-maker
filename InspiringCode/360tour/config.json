@@ -1,0 +1,210 @@
+{
+  "name": "Test Newhouse",
+  "created": "2025-09-17T20:14:21.967Z",
+  "scenes": {
+    "room1": {
+      "name": "Room 1",
+      "image": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Noah%20Amaral/images/IMG-20250915-163710-125_1757969510140.jpg",
+      "hotspots": [
+        {
+          "id": 1,
+          "type": "text",
+          "position": "6.67 1.83 3.41",
+          "text": "See that modern building down there? That's Newhouse 3, the most recently constructed part of the Newhouse School complex.",
+          "scene": "room1",
+          "navigationTarget": null,
+          "audio": null
+        },
+        {
+          "id": 2,
+          "type": "navigation",
+          "position": "6.89 0.87 2.87",
+          "text": "",
+          "scene": "room1",
+          "navigationTarget": "scene_1758130871012",
+          "audio": null
+        }
+      ],
+      "startingPoint": {
+        "rotation": {
+          "x": -2.406422739549451,
+          "y": -124.21724998436235,
+          "z": 0
+        }
+      },
+      "globalSound": null
+    },
+    "scene_1758130871012": {
+      "name": "NH3 - Outside",
+      "image": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Noah%20Amaral/images/IMG-20250915-163707-860_1757969504972.jpg",
+      "hotspots": [
+        {
+          "id": 3,
+          "type": "text",
+          "position": "-6.75 1.33 3.26",
+          "text": "Newhouse 3 has faculty offices, some modern classrooms, and several hangout and study spaces for students.",
+          "scene": "scene_1758130871012",
+          "navigationTarget": null,
+          "audio": null
+        },
+        {
+          "id": 4,
+          "type": "text",
+          "position": "-7.04 1.41 -2.59",
+          "text": "Newhouse 1, the oldest of the three-building complex, was designed by world famous architect I.M. Pei.",
+          "scene": "scene_1758130871012",
+          "navigationTarget": null,
+          "audio": null
+        },
+        {
+          "id": 5,
+          "type": "navigation",
+          "position": "-7.44 1.98 -0.89",
+          "text": "",
+          "scene": "scene_1758130871012",
+          "navigationTarget": "scene_1758130905306",
+          "audio": null
+        },
+        {
+          "id": 2,
+          "type": "audio",
+          "position": "-4.25 1.96 6.17",
+          "text": "",
+          "scene": "scene_1758130871012",
+          "navigationTarget": null,
+          "audio": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Qitian%20Jiang/audio/Syracuse-University_1757970151250.mp3"
+        }
+      ],
+      "startingPoint": {
+        "rotation": {
+          "x": 4.469070802020426,
+          "y": 102.55944532841733,
+          "z": 0
+        }
+      },
+      "globalSound": null
+    },
+    "scene_1758130905306": {
+      "name": "NH Plaza, outside",
+      "image": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Noah%20Amaral/images/IMG-20250915-163712-258_1757969512949.jpg",
+      "hotspots": [
+        {
+          "id": 6,
+          "type": "text",
+          "position": "-7.37 2.17 -1.28",
+          "text": "In 2023, the Newhouse Family Plaza was dedicated to the family whose name is on the school. It will be fully renovated in 2026.",
+          "scene": "scene_1758130905306",
+          "navigationTarget": null,
+          "audio": null
+        },
+        {
+          "id": 7,
+          "type": "navigation",
+          "position": "7.41 2.35 0.91",
+          "text": "",
+          "scene": "scene_1758130905306",
+          "navigationTarget": "scene_1758130948133",
+          "audio": null
+        },
+        {
+          "id": 1,
+          "type": "navigation",
+          "position": "-7.28 3.15 0.96",
+          "text": "",
+          "scene": "scene_1758130905306",
+          "navigationTarget": "room1",
+          "audio": null
+        },
+        {
+          "id": 3,
+          "type": "text-audio",
+          "position": "5.79 2.65 -4.65",
+          "text": "Put some text here",
+          "scene": "scene_1758130905306",
+          "navigationTarget": null,
+          "audio": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Qitian%20Jiang/audio/Syracuse-University_1757970151250.mp3"
+        },
+        {
+          "id": 4,
+          "type": "audio",
+          "position": "6.76 4.49 -1.48",
+          "text": "",
+          "scene": "scene_1758130905306",
+          "navigationTarget": null,
+          "audio": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Qitian%20Jiang/audio/Syracuse-University_1757970151250.mp3"
+        }
+      ],
+      "startingPoint": {
+        "rotation": {
+          "x": 5.156620156177413,
+          "y": -101.87189597426045,
+          "z": 0
+        }
+      },
+      "globalSound": {
+        "audio": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Qitian%20Jiang/audio/Syracuse-University_1757970151250.mp3",
+        "volume": 0.5,
+        "enabled": true
+      }
+    },
+    "scene_1758130948133": {
+      "name": "NH1 - Lobby",
+      "image": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Noah%20Amaral/images/IMG-20250915-163714-345_1757969515937.jpg",
+      "hotspots": [
+        {
+          "id": 8,
+          "type": "navigation",
+          "position": "7.28 1.37 -1.78",
+          "text": "",
+          "scene": "scene_1758130948133",
+          "navigationTarget": "scene_1758130905306",
+          "audio": null
+        },
+        {
+          "id": 9,
+          "type": "navigation",
+          "position": "-3.96 1.77 6.37",
+          "text": "",
+          "scene": "scene_1758130948133",
+          "navigationTarget": "scene_1758130905306",
+          "audio": null
+        },
+        {
+          "id": 10,
+          "type": "text",
+          "position": "-7.35 3.07 -0.21",
+          "text": "President Lyndon B. Johnson gave the Gulf of Tompkins Resolution speech from these steps in 1964. That speech launched the Vietnam War.",
+          "scene": "scene_1758130948133",
+          "navigationTarget": null,
+          "audio": null
+        },
+        {
+          "id": 1,
+          "type": "navigation",
+          "position": "3.94 1.83 6.38",
+          "text": "",
+          "scene": "scene_1758130948133",
+          "navigationTarget": "scene_1758139454984",
+          "audio": null
+        }
+      ],
+      "startingPoint": null,
+      "globalSound": null
+    },
+    "scene_1758139454984": {
+      "name": "N2 - North Doors",
+      "image": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Qitian%20Jiang/images/IMG-20250915-163810-622_1757969700663.jpg",
+      "hotspots": [],
+      "startingPoint": {
+        "rotation": {
+          "x": -3.437746770784947,
+          "y": 67.03606203030648,
+          "z": 0
+        }
+      },
+      "globalSound": null
+    }
+  },
+  "currentScene": "room1",
+  "version": "1.0"
+}

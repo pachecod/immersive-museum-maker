@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Agriquest Museum</title>
+    <!-- Prevent default mobile zoom behavior -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
+    <meta aframe-injected="" name="mobile-web-app-capable" content="yes" />
+    <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls/dist/aframe-blink-controls.min.js"></script>
+    <script src="https://unpkg.com/aframe-thumb-controls-component@1.1.0/dist/aframe-thumb-controls-component.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+    <script src="https://recast-api.donmccurdy.com/aframe-inspector-plugin-recast.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Removed physics system due to compatibility issues -->
+    
+    <!-- External Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- External Script -->
+    <script src="script.js"></script>
+  </head>
+
+  <body>
+    <a-scene 
+      loading-manager
+      cursor="rayOrigin: mouse" 
+      sound-effects
+      static-skybox>
+      
+      <!-- UI Overlays -->
+      <div class="museum-info">Welcome to the Agriquest Museum</div>
+      
+      <!-- Model Editor Panel -->
+      <div id="editor-panel" class="editor-panel">
+        <div class="editor-header">
+          <h3>Model Editor</h3>
+          <div class="header-controls">
+            <div id="refresh-indicator" class="refresh-indicator" style="display: none;">
+              <div class="spinner"></div>
+            </div>
+            <button id="toggle-editor" class="toggle-btn">Hide</button>
+          </div>
+        </div>
+        
+        <div class="editor-content">
+          <!-- Model Selection -->
+          <div class="editor-section">
+            <label>Select Model:</label>
+            <select id="model-selector">
+              <option value="">Choose a model...</option>
+            </select>
+          </div>
+          
+          <!-- Model Properties -->
+          <div id="model-properties" class="editor-section" style="display: none;">
+            <h4>Model Properties</h4>
+            
+            <!-- Basic Info -->
+            <div class="property-group">
+              <label>Name:</label>
+              <input type="text" id="model-name" placeholder="Model name">
+            </div>
+            
+            <div class="property-group">
+              <label>Model Asset ID:</label>
+              <input type="text" id="model-asset-id" placeholder="e.g., vegetablesalad">
+              <div class="field-help">
+                <small>Internal asset identifier (editable)</small>
+              </div>
+            </div>
+            
+            <div class="property-group">
+              <label>Model URL:</label>
+              <div class="url-input-container">
+                <input type="url" id="model-url" placeholder="https://...">
+                <button id="load-model" class="action-btn">Load Model</button>
+                <button id="preview-url" class="action-btn">Preview</button>
+              </div>
+              <div class="url-help">
+                <small>Enter the direct URL to the 3D model file (.glb/.gltf)</small>
+              </div>
+            </div>
+            
+            <!-- Position -->
+            <div class="property-group">
+              <label>Position:</label>
+              <div class="vector-input">
+                <input type="number" id="pos-x" placeholder="X" step="0.1">
+                <input type="number" id="pos-y" placeholder="Y" step="0.1">
+                <input type="number" id="pos-z" placeholder="Z" step="0.1">
+              </div>
+            </div>
+            
+            <!-- Scale -->
+            <div class="property-group">
+              <label>Scale:</label>
+              <div class="scale-controls">
+                <div class="scale-lock-container">
+                  <input type="checkbox" id="scale-lock" checked>
+                  <label for="scale-lock">Lock Scale</label>
+                </div>
+                <div class="vector-input">
+                  <input type="number" id="scale-x" placeholder="X" step="0.1" min="0.1" max="100">
+                  <input type="number" id="scale-y" placeholder="Y" step="0.1" min="0.1" max="100">
+                  <input type="number" id="scale-z" placeholder="Z" step="0.1" min="0.1" max="100">
+                </div>
+              </div>
+            </div>
+            
+            <!-- Rotation -->
+            <div class="property-group">
+              <label>Rotation (degrees):</label>
+              <div class="vector-input">
+                <input type="number" id="rot-x" placeholder="X" step="1" min="-180" max="180">
+                <input type="number" id="rot-y" placeholder="Y" step="1" min="-180" max="180">
+                <input type="number" id="rot-z" placeholder="Z" step="1" min="-180" max="180">
+              </div>
+            </div>
+            
+            <!-- Exhibit Position -->
+            <div class="property-group">
+              <label>Exhibit Position:</label>
+              <div class="vector-input">
+                <input type="number" id="exhibit-pos-x" placeholder="X" step="0.1">
+                <input type="number" id="exhibit-pos-y" placeholder="Y" step="0.1">
+                <input type="number" id="exhibit-pos-z" placeholder="Z" step="0.1">
+              </div>
+            </div>
+            
+            <!-- Hotspot Position -->
+            <div class="property-group">
+              <label>Hotspot Position:</label>
+              <div class="vector-input">
+                <input type="number" id="hotspot-pos-x" placeholder="X" step="0.1">
+                <input type="number" id="hotspot-pos-y" placeholder="Y" step="0.1">
+                <input type="number" id="hotspot-pos-z" placeholder="Z" step="0.1">
+              </div>
+            </div>
+            
+            <!-- Text Properties -->
+            <div class="property-group">
+              <label>Hotspot Label:</label>
+              <input type="text" id="hotspot-label" placeholder="Hotspot label">
+            </div>
+            
+            <div class="property-group">
+              <label>Hotspot Info:</label>
+              <textarea id="hotspot-info" placeholder="Information text" rows="3"></textarea>
+            </div>
+            
+            <!-- Model-specific Audio URL -->
+            <div class="property-group" id="model-audio-section" style="display: none;">
+              <label>Audio File URL:</label>
+              <div style="margin-top: 10px;">
+                <!-- Tomato audio -->
+                <div id="tomato-audio-section" style="margin-bottom: 15px; display: none;">
+                  <label for="audio1-url" style="display: block; margin-bottom: 5px; font-weight: bold;">Audio1 URL (Tomato Exhibit):</label>
+                  <div class="url-input-container">
+                    <input type="url" id="audio1-url" placeholder="https://..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit;">
+                    <button id="preview-audio1" class="action-btn">Preview</button>
+                  </div>
+                </div>
+                
+                <!-- Eggplant audio -->
+                <div id="eggplant-audio-section" style="margin-bottom: 15px; display: none;">
+                  <label for="audiocarrots-url" style="display: block; margin-bottom: 5px; font-weight: bold;">AudioCarrots URL (Eggplant Exhibit):</label>
+                  <div class="url-input-container">
+                    <input type="url" id="audiocarrots-url" placeholder="https://..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit;">
+                    <button id="preview-audiocarrots" class="action-btn">Preview</button>
+                  </div>
+                </div>
+                
+                <!-- Onion audio -->
+                <div id="onion-audio-section" style="margin-bottom: 15px; display: none;">
+                  <label for="audioonion-url" style="display: block; margin-bottom: 5px; font-weight: bold;">AudioOnion URL (Onion Exhibit):</label>
+                  <div class="url-input-container">
+                    <input type="url" id="audioonion-url" placeholder="https://..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit;">
+                    <button id="preview-audioonion" class="action-btn">Preview</button>
+                  </div>
+                </div>
+              </div>
+              <small style="display: block; color: #666; margin-top: 5px;">
+                Audio file URL for this exhibit's hotspot audio
+              </small>
+            </div>
+            
+            <!-- Actions -->
+            <div class="editor-actions">
+              <button id="update-model" class="primary-btn">Update Model</button>
+              <button id="reset-model" class="secondary-btn">Reset</button>
+              <button id="delete-model" class="danger-btn">Delete Model</button>
+            </div>
+          </div>
+          
+          <!-- Slideshow Configuration -->
+          <div class="editor-section">
+            <h4>Slideshow Settings</h4>
+            
+            <!-- Slideshow Images -->
+            <div class="property-group">
+              <label>Image 1 URL:</label>
+              <div class="url-input-container">
+                <input type="url" id="slideshow-image1" placeholder="https://...">
+                <button id="preview-image1" class="action-btn">Preview</button>
+              </div>
+            </div>
+            
+            <div class="property-group">
+              <label>Image 2 URL:</label>
+              <div class="url-input-container">
+                <input type="url" id="slideshow-image2" placeholder="https://...">
+                <button id="preview-image2" class="action-btn">Preview</button>
+              </div>
+            </div>
+            
+            <div class="property-group">
+              <label>Image 3 URL:</label>
+              <div class="url-input-container">
+                <input type="url" id="slideshow-image3" placeholder="https://...">
+                <button id="preview-image3" class="action-btn">Preview</button>
+              </div>
+            </div>
+            
+            <!-- Slideshow Text Content -->
+            <div class="property-group">
+              <label>Slide 1 Text:</label>
+              <textarea id="slideshow-slide1-text" placeholder="Slide 1 caption..." rows="2"></textarea>
+            </div>
+            
+            <div class="property-group">
+              <label>Slide 2 Text:</label>
+              <textarea id="slideshow-slide2-text" placeholder="Slide 2 caption..." rows="2"></textarea>
+            </div>
+            
+            <div class="property-group">
+              <label>Slide 3 Text:</label>
+              <textarea id="slideshow-slide3-text" placeholder="Slide 3 caption..." rows="2"></textarea>
+            </div>
+            
+            <div class="editor-actions">
+              <button id="update-slideshow" class="primary-btn">Update Slideshow</button>
+              <button id="reset-slideshow" class="secondary-btn">Reset Slideshow</button>
+            </div>
+          </div>
+          
+          <!-- Environment Settings -->
+          <div class="editor-section">
+            <h4>Environment Settings</h4>
+            
+            <!-- 360 Panorama Image -->
+            <div class="property-group">
+              <label>360 Panorama Image:</label>
+              <div class="url-input-container">
+                <input type="url" id="panorama-image-url" placeholder="https://... or upload file">
+                <button id="upload-panorama" class="action-btn">Upload</button>
+                <button id="preview-panorama" class="action-btn">Preview</button>
+              </div>
+              <div class="panorama-preview" id="panorama-preview" style="display: none;">
+                <img id="panorama-preview-img" style="max-width: 200px; max-height: 100px; margin-top: 10px; border-radius: 5px;">
+              </div>
+            </div>
+            
+            <!-- Ground Texture -->
+            <div class="property-group">
+              <label>Ground Texture URL:</label>
+              <div class="url-input-container">
+                <input type="url" id="ground-texture-url" placeholder="https://...">
+                <button id="preview-ground" class="action-btn">Preview</button>
+              </div>
+            </div>
+            
+            <!-- Ambient Audio Control -->
+            <div class="property-group">
+              <label>
+                <input type="checkbox" id="ambient-audio-enabled" style="margin-right: 8px;">
+                Enable Ambient Audio
+              </label>
+              <small style="display: block; color: #666; margin-top: 5px;">
+                Play ambient background music automatically when the museum loads
+              </small>
+            </div>
+            
+            <!-- Ambient Audio URL -->
+            <div class="property-group">
+              <label>Ambient Audio URL:</label>
+              <div class="url-input-container">
+                <input type="url" id="ambient-audio-url" placeholder="https://...">
+                <button id="preview-ambient-audio" class="action-btn">Preview</button>
+              </div>
+              <small style="display: block; color: #666; margin-top: 5px;">
+                URL for the ambient background audio file (MP3, WAV, etc.)
+              </small>
+            </div>
+            
+            <!-- Click Sound URL -->
+            <div class="property-group">
+              <label>Click Sound URL:</label>
+              <div class="url-input-container">
+                <input type="url" id="click-sound-url" placeholder="https://...">
+                <button id="preview-click-sound" class="action-btn">Preview</button>
+              </div>
+              <small style="display: block; color: #666; margin-top: 5px;">
+                URL for the click sound effect (MP3, WAV, etc.)
+              </small>
+            </div>
+            
+            <!-- Audio Testing -->
+            <div class="property-group">
+              <label>Test Sounds:</label>
+              <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button id="test-ambient-audio" class="action-btn">🎵 Test Ambient</button>
+                <button id="test-click-sound" class="action-btn">🔊 Test Click</button>
+                <button id="test-teleport-sound" class="action-btn">⚡ Test Teleport</button>
+              </div>
+              <small style="display: block; color: #666; margin-top: 5px;">
+                Test sounds in the editor before exporting
+              </small>
+            </div>
+
+            
+            <!-- Environment Actions -->
+            <div class="editor-actions">
+              <button id="update-environment" class="primary-btn">Update Environment</button>
+              <button id="reset-environment" class="secondary-btn" style="display: none;">Reset Environment</button>
+            </div>
+            
+            <!-- Hidden file input for panorama upload -->
+            <input type="file" id="panorama-file-input" accept="image/*" style="display: none;">
+          </div>
+          
+          <!-- Configuration Management -->
+          <div class="editor-section">
+            <h4>Configuration</h4>
+            <div class="config-actions">
+              <button id="save-config" class="primary-btn">Save Config</button>
+              <button id="load-config" class="secondary-btn">Load Config</button>
+              <button id="reload-config" class="secondary-btn" style="display: none;">Reload from Server</button>
+              <button id="refresh-interface" class="action-btn" style="display: none;">Refresh UI</button>
+              <button id="export-config" class="secondary-btn">Export HTML</button>
+              <button id="import-config" class="secondary-btn" style="display: none;">Import</button>
+              <button id="compile-scene" class="primary-btn" style="background: #e74c3c; margin-top: 10px; display: none;">🎬 Compile New Scene</button>
+              <button id="save-public-scene" class="primary-btn" style="background: #9b59b6; margin-top: 5px; display: none;">🌐 Save Public Scene</button>
+              <button id="load-compiled-scene" class="secondary-btn" style="background: #27ae60; margin-top: 5px; display: none;">📁 Load Compiled Scene</button>
+              <input type="file" id="config-file-input" accept=".json" style="display: none;">
+              <input type="file" id="compiled-scene-dir-input" accept=".html" style="display: none;" webkitdirectory>
+            </div>
+          </div>
+          
+          <!-- Quick Actions -->
+          <div class="editor-section">
+            <h4>Quick Actions</h4>
+            <div class="quick-actions">
+              <button id="center-model" class="action-btn">Center Model</button>
+              <button id="fit-to-ground" class="action-btn">Fit to Ground</button>
+              <button id="force-refresh" class="action-btn">Force Refresh</button>
+              <button id="toggle-labels" class="action-btn">Hide Labels</button>
+              <button id="duplicate-model" class="action-btn">Duplicate</button>
+              <button id="debug-label-update" class="action-btn" style="background: #ff6b6b;">Debug Label Update</button>
+            </div>
+          </div>
+          
+          <!-- Debug Panel -->
+          <div class="editor-section">
+            <h4>Debug Info</h4>
+            <div id="debug-info" class="debug-info">
+              <p>Select a model to see debug information...</p>
+            </div>
+            <button id="refresh-debug" class="action-btn">Refresh Debug Info</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Camera Rig with Enhanced Controls -->
+      <a-entity
+        id="cameraRig"
+        enhanced-mobile-controls="speed: 3"
+        movement-controls="fly: false; constrainToNavMesh: false;"
+        position="0 0 0"
+        rotation="0 0 0"
+      >
+        <a-entity
+          id="head"
+          camera="active: true"
+          look-controls="pointerLockEnabled: true; reverseMouseDrag: false"
+          wasd-controls="fly: false"
+          position="0 1.6 0"
+        >
+          <a-cursor
+            fuse="true"
+            fuse-timeout="1500"
+            animation__click="property: scale; startEvents: click; easing: easeInCubic; dur: 150; from: 0.1 0.1 0.1; to: 1 1 1"
+            animation__fusing="property: scale; startEvents: fusing; easing: easeInCubic; dur: 1500; from: 1 1 1; to: 0.1 0.1 0.1"
+            animation__mouseleave="property: scale; startEvents: mouseleave; easing: easeInCubic; dur: 500; to: 1 1 1"
+            raycaster="objects: .clickable"
+          ></a-cursor>
+        </a-entity>
+
+        <!-- Controllers with improved teleportation -->
+        <a-entity
+          id="left-controller"
+          laser-controls="hand: left"
+          raycaster="objects: .clickable, .ground"
+          blink-controls="cameraRig: #cameraRig; teleportOrigin: #cameraRig; landingMaxAngle: 45; buttonTopoOffset: 0.1"
+          visible="true"
+        ></a-entity>
+        
+        <a-entity
+          id="right-controller"
+          laser-controls="hand: right"
+          raycaster="objects: .clickable, .ground"
+          blink-controls="cameraRig: #cameraRig; teleportOrigin: #cameraRig; landingMaxAngle: 45; buttonTopoOffset: 0.1"
+          visible="true"
+        ></a-entity>
+      </a-entity>
+
+      <!-- Assets will be loaded dynamically from config.json -->
+      <a-assets timeout="10000">
+        <!-- Assets are populated by script.js -->
+      </a-assets>
+
+      <!-- Environment and exhibits will be created dynamically by script.js -->
+      
+    </a-scene>
+  </body>
+</html>

@@ -1,0 +1,212 @@
+{
+  "name": "Agriquest Museum",
+  "created": "2025-01-27T00:00:00.000Z",
+  "version": "1.0",
+  "description": "Interactive Museum for educational purposes",
+  
+  "assets": {
+    "images": {
+      "image1": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Dan%20Pacheco/images/IMG-1545_1753133961480.jpg",
+      "image2": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Dan%20Pacheco/images/IMG-1545_1753133961480.jpg",
+      "image3": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Dan%20Pacheco/images/IMG-1545_1753133961480.jpg",
+      "arrowLeft": "https://cdn.glitch.global/a39b243d-0aab-4e21-bb36-77d8260788f9/left-arrow.png?v=1746470754984",
+      "arrowRight": "https://cdn.glitch.global/a39b243d-0aab-4e21-bb36-77d8260788f9/right-arrow.png?v=1746470763334",
+      "grid": "images/border.jpg",
+      "sky": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/common-assets/images/field_1755865675533.jpg",
+      "ground": "https://cdn.glitch.global/a39b243d-0aab-4e21-bb36-77d8260788f9/grass.jpg?v=1746470564686",
+      "hotspot": "https://cdn.glitch.global/a39b243d-0aab-4e21-bb36-77d8260788f9/hotspot.png?v=1746470775132"
+    },
+    "models": {
+      "vegetablesalad": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/student1/3d/vegetablesalad_1758308877432.glb",
+      "wheelbarrow": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/wheelbarrow_1758376227276.glb",
+      "onion": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/onions_1758376229101.glb"
+    },
+    "audio": {
+      "audio1": "https://cdn.glitch.global/a39b243d-0aab-4e21-bb36-77d8260788f9/mushroomsaudio.mp3?v=1746472515312",
+      "audiocarrots": "https://cdn.glitch.global/a39b243d-0aab-4e21-bb36-77d8260788f9/audiocarrots.mp3?v=1746474555747",
+      "audioonion": "https://cdn.glitch.global/a39b243d-0aab-4e21-bb36-77d8260788f9/audioonion.mp3?v=1746477862843",
+      "ambient": "https://cdn.glitch.global/a39b243d-0aab-4e21-bb36-77d8260788f9/ambient_nature.mp3?v=1746470754684",
+      "click": "https://cdn.glitch.global/a39b243d-0aab-4e21-bb36-77d8260788f9/click.mp3?v=1746470754684",
+      "teleport": "https://cdn.glitch.global/a39b243d-0aab-4e21-bb36-77d8260788f9/teleport.mp3?v=1746470754684"
+    }
+  },
+  
+  "environment": {
+    "sky": {
+      "day": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/common-assets/images/field_1755865675533.jpg",
+      "night": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/common-assets/images/field_1755865675533.jpg"
+    },
+    "ground": {
+      "texture": "https://cdn.glitch.global/a39b243d-0aab-4e21-bb36-77d8260788f9/grass.jpg?v=1746470564686",
+      "repeat": "10 10",
+      "size": "100 100"
+    },
+    "lighting": {
+      "ambient": {
+        "color": "#BBB",
+        "intensity": 1
+      },
+      "directional": {
+        "color": "#FFF",
+        "intensity": 1,
+        "position": "-1 1 0",
+        "castShadow": true
+      }
+    },
+    "physics": {
+      "floor": {
+        "position": "0 -0.1 0",
+        "size": "100 0.2 100",
+        "visible": false
+      },
+      "ceiling": {
+        "position": "0 4 0", 
+        "size": "100 0.2 100",
+        "visible": false
+      }
+    }
+  },
+  
+  "infoDisplay": {
+    "position": "0 0 -5",
+    "panel": {
+      "position": "0 2.6 -4",
+      "size": "4 2.5",
+      "images": ["#image1", "#image2", "#image3"]
+    },
+    "navigation": {
+      "left": {
+        "position": "-2.3 0 0",
+        "size": "0.6 0.6"
+      },
+      "right": {
+        "position": "2.3 0 0", 
+        "size": "0.6 0.6"
+      }
+    },
+    "text": {
+      "position": "0 -1.6 0",
+      "size": "4 0.8",
+      "content": {
+        "default": "Welcome to the Agriquest Garden Museum! Explore vegetables and garden tools in this interactive 3D exhibit. Click on the hotspots to learn more about each item.",
+        "wheelbarrow": "Wheelbarrows are essential garden tools that make transporting soil, plants, and materials much easier. They help gardeners work more efficiently.",
+        "onion": "Onions add flavor to countless dishes worldwide. They contain compounds that may help reduce inflammation and promote heart health."
+      }
+    }
+  },
+  
+  "exhibits": [
+    {
+      "id": "vegetablesalad-exhibit",
+      "name": "Vegetable Salad Exhibit",
+      "position": "-15 0 -17",
+      "model": {
+        "id": "vegetablesalad-model",
+        "src": "#vegetablesalad",
+        "position": "0 1 0",
+        "scale": "1 1 1",
+        "rotation": "0 0 0",
+        "castShadow": true
+      },
+      "environment": {
+        "geometry": "primitive: cylinder; radius: 5; height: 0.1",
+        "position": "0 0 0",
+        "material": "color: #2D5F34; roughness: 0.9"
+      },
+      "hotspot": {
+        "id": "vegetablesalad-hotspot",
+        "position": "3 1.5 0",
+        "label": "Vegetable Salad",
+        "audio": "#audio1",
+        "info": "This is vegetable salad from vegetables we grew.",
+        "vegetableModel": "vegetablesalad-model",
+        "revealAnimation": true
+      }
+    },
+    {
+      "id": "wheelbarrow-exhibit", 
+      "name": "Wheelbarrow Exhibit",
+      "position": "-5 0 15",
+      "model": {
+        "id": "wheelbarrow-model",
+        "src": "#wheelbarrow",
+        "position": "0 1 0",
+        "scale": "1 1 1",
+        "rotation": "0 0 0",
+        "castShadow": true
+      },
+      "environment": {
+        "geometry": "primitive: cylinder; radius: 5; height: 0.1",
+        "position": "0 0 0", 
+        "material": "color: #E6B570; roughness: 0.9"
+      },
+      "hotspot": {
+        "id": "wheelbarrow-hotspot",
+        "position": "3 1.5 0",
+        "label": "Learn about Wheelbarrows",
+        "audio": "#audiocarrots",
+        "info": "Wheelbarrows are essential garden tools that make transporting soil, plants, and materials much easier. They help gardeners work more efficiently and reduce physical strain.",
+        "vegetableModel": "wheelbarrow-model",
+        "revealAnimation": true
+      }
+    },
+    {
+      "id": "onion-exhibit",
+      "name": "Onion Exhibit", 
+      "position": "13.6 0 2",
+      "model": {
+        "id": "onion-model",
+        "src": "#onion",
+        "position": "0 1 0",
+        "scale": "1 1 1",
+        "rotation": "0 0 0",
+        "castShadow": true
+      },
+      "environment": {
+        "geometry": "primitive: cylinder; radius: 5; height: 0.1",
+        "position": "0 0 0",
+        "material": "color: #B39DDB; roughness: 0.9"
+      },
+      "hotspot": {
+        "id": "onion-hotspot",
+        "position": "3 1.5 0",
+        "label": "Learn about Onions",
+        "audio": "#audioonion", 
+        "info": "Onions are bulbous vegetables with layers of flesh covered by a papery skin. They contain compounds that may reduce inflammation and lower cholesterol levels.",
+        "vegetableModel": "onion-model",
+        "revealAnimation": true
+      }
+    }
+  ],
+  
+  "camera": {
+    "position": "0 1.6 0",
+    "lookControls": {
+      "pointerLockEnabled": true,
+      "reverseMouseDrag": false
+    },
+    "wasdControls": {
+      "fly": false
+    }
+  },
+  
+  "mobileControls": {
+    "speed": 3,
+    "verticalMovementLocked": true
+  },
+  
+  "dayNightCycle": {
+    "enabled": true,
+    "cycleLength": 180
+  },
+  
+  "soundEffects": {
+    "enabled": true,
+    "ambientDelay": 2000
+  },
+  
+  "loading": {
+    "enabled": true,
+    "timeout": 10000
+  }
+}
