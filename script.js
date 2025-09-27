@@ -4043,6 +4043,90 @@ class ModelEditor {
             }
         });
 
+        // Enhanced mobile movement with better controls
+        AFRAME.registerComponent("enhanced-mobile-controls", {
+            schema: {
+                speed: { type: "number", default: 2 }
+            },
+            init: function () {
+                var self = this;
+                this.numFingers = 0;
+                this.verticalMovementLocked = true;
+                
+                this.updateTouches = function (event) {
+                    event.preventDefault();
+                    self.numFingers = event.touches.length;
+                };
+                
+                this.clearTouches = function (event) {
+                    event.preventDefault();
+                    self.numFingers = (event.touches && event.touches.length) || 0;
+                };
+                
+                this.el.sceneEl.addEventListener("renderstart", function () {
+                    var canvas = self.el.sceneEl.canvas;
+                    canvas.addEventListener("touchstart", self.updateTouches, { passive: false });
+                    canvas.addEventListener("touchmove", self.updateTouches, { passive: false });
+                    canvas.addEventListener("touchend", self.clearTouches, { passive: false });
+                    canvas.addEventListener("touchcancel", self.clearTouches, { passive: false });
+                });
+                
+                if (AFRAME.utils.device.isMobile()) {
+                    var leftCtrl = document.querySelector("#left-controller");
+                    var rightCtrl = document.querySelector("#right-controller");
+                    if (leftCtrl) {
+                        leftCtrl.removeAttribute("blink-controls");
+                    }
+                    if (rightCtrl) {
+                        rightCtrl.removeAttribute("blink-controls");
+                    }
+                }
+                
+                const controlsGuide = document.createElement('div');
+                controlsGuide.className = 'controls-guide';
+                controlsGuide.innerHTML = 'Touch screen to move:<br>• One finger - Move forward<br>• Two fingers - Move backward<br>• Look around to change direction';
+                document.body.appendChild(controlsGuide);
+                
+                setTimeout(() => {
+                    controlsGuide.style.opacity = '0';
+                    controlsGuide.style.transition = 'opacity 1s ease';
+                    setTimeout(() => {
+                        controlsGuide.style.display = 'none';
+                    }, 1000);
+                }, 5000);
+            },
+            tick: function (time, deltaTime) {
+                if (this.numFingers === 0) {
+                    return;
+                }
+                
+                var distance = this.data.speed * (deltaTime / 1000);
+                var moveMultiplier = this.numFingers === 1 ? -1 : 1;
+                
+                var cameraEl = this.el.querySelector("[camera]");
+                if (cameraEl) {
+                    var direction = new THREE.Vector3();
+                    cameraEl.object3D.getWorldDirection(direction);
+                    
+                    if (this.verticalMovementLocked) {
+                        direction.y = 0;
+                        direction.normalize();
+                    }
+                    
+                    direction.multiplyScalar(distance * moveMultiplier);
+                    this.el.object3D.position.add(direction);
+                    this.el.object3D.position.y = 0;
+                }
+            },
+            remove: function () {
+                var canvas = this.el.sceneEl.canvas;
+                canvas.removeEventListener("touchstart", this.updateTouches);
+                canvas.removeEventListener("touchmove", this.updateTouches);
+                canvas.removeEventListener("touchend", this.clearTouches);
+                canvas.removeEventListener("touchcancel", this.clearTouches);
+            }
+        });
+
         // Spot component for hotspot behavior with enhanced functionality
         AFRAME.registerComponent("spot", {
             schema: {
