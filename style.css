@@ -502,6 +502,76 @@ body {
   color: rgba(255, 255, 255, 0.5);
 }
 
+/* Additional Models Container */
+.additional-models-container {
+  margin-top: 15px;
+}
+
+.additional-model-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 15px;
+  position: relative;
+}
+
+.additional-model-item h4 {
+  color: #4CAF50;
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.additional-model-item .url-input-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.additional-model-item .url-input-container input {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: white;
+  font-size: 14px;
+}
+
+.additional-model-item .url-input-container input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.additional-model-item .action-btn {
+  padding: 8px 12px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.additional-model-item .action-btn:hover {
+  background: #45a049;
+  transform: translateY(-1px);
+}
+
+.additional-model-item .action-btn.delete {
+  background: #f44336;
+}
+
+.additional-model-item .action-btn.delete:hover {
+  background: #d32f2f;
+}
+
 .position-inputs {
   display: flex;
   gap: 10px;

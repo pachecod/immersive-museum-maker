@@ -95,7 +95,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY o
             </div>
             
             <div class="property-group">
-              <label>Model URL:</label>
+              <label>Default Model URL:</label>
               <div class="url-input-container">
                 <input type="url" id="model-url" placeholder="https://...">
                 <button id="load-model" class="action-btn">Load Model</button>
@@ -104,6 +104,15 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY o
               <div class="url-help">
                 <small>Enter the direct URL to the 3D model file (.glb/.gltf)</small>
               </div>
+            </div>
+            
+            <div class="property-group">
+              <button id="add-model" class="action-btn">Add Model</button>
+            </div>
+            
+            <!-- Additional Models Container -->
+            <div id="additional-models-container" class="additional-models-container">
+              <!-- Additional models will be dynamically added here -->
             </div>
             
             <!-- Position -->

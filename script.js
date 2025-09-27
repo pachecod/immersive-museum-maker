@@ -1597,6 +1597,42 @@ class MuseumProject {
       exhibitEntity.appendChild(hotspot);
       console.log(`Created interaction hotspot: ${exhibit.hotspot.label}`);
       
+      // === ADDITIONAL MODELS ===
+      // Create additional models if they exist
+      if (exhibit.additionalModels && exhibit.additionalModels.length > 0) {
+        exhibit.additionalModels.forEach((additionalModel, modelIndex) => {
+          console.log(`   Creating additional model ${modelIndex + 1}: ${additionalModel.id}`);
+          
+          // Create asset for additional model
+          let assetElement = document.querySelector(`#${additionalModel.id}`);
+          if (!assetElement && additionalModel.url) {
+            assetElement = document.createElement('a-asset-item');
+            assetElement.id = additionalModel.id;
+            assetElement.setAttribute('type', 'gltf');
+            assetElement.setAttribute('data-asset-type', '3d-model');
+            assetElement.setAttribute('src', additionalModel.url);
+            
+            const assets = document.querySelector('a-assets');
+            if (assets) {
+              assets.appendChild(assetElement);
+            }
+          }
+          
+          // Create model entity
+          const additionalModelEntity = document.createElement('a-entity');
+          additionalModelEntity.id = additionalModel.id;
+          additionalModelEntity.setAttribute('gltf-model', `#${additionalModel.id}`);
+          additionalModelEntity.setAttribute('position', additionalModel.position);
+          additionalModelEntity.setAttribute('rotation', additionalModel.rotation);
+          additionalModelEntity.setAttribute('scale', additionalModel.scale);
+          additionalModelEntity.setAttribute('visible', additionalModel.visible);
+          additionalModelEntity.classList.add('additional-model');
+          
+          exhibitEntity.appendChild(additionalModelEntity);
+          console.log(`   ✅ Additional model added: ${additionalModel.id}`);
+        });
+      }
+
       // Add complete exhibit to scene
       scene.appendChild(exhibitEntity);
       console.log(`✅ Complete exhibit added to scene: ${exhibit.name}`);
@@ -1811,6 +1847,11 @@ class ModelEditor {
 
     document.getElementById('preview-url').addEventListener('click', () => {
       this.previewModelUrl();
+    });
+
+    // Add model button
+    document.getElementById('add-model').addEventListener('click', () => {
+      this.addAdditionalModel();
     });
 
     // Configuration management
@@ -2214,6 +2255,7 @@ class ModelEditor {
       document.getElementById('model-properties').style.display = 'none';
       document.getElementById('model-audio-section').style.display = 'none';
       this.currentModel = null;
+      this.clearAdditionalModelsUI();
       return;
     }
 
@@ -2223,6 +2265,7 @@ class ModelEditor {
     
     this.populateForm(exhibit);
     this.showAppropriateAudioSection(exhibit);
+    this.loadAdditionalModelsUI(exhibit);
     document.getElementById('model-properties').style.display = 'block';
     this.updateDebugInfo();
     
@@ -2696,6 +2739,243 @@ class ModelEditor {
       
       this.showNotification('Model deleted successfully', 'success');
     }
+  }
+
+  addAdditionalModel() {
+    if (!this.currentModel) {
+      this.showNotification('Please select a scene first', 'error');
+      return;
+    }
+
+    // Generate unique ID for the additional model
+    const modelId = `additional_model_${Date.now()}`;
+    const modelIndex = this.currentModel.exhibit.additionalModels ? this.currentModel.exhibit.additionalModels.length : 0;
+
+    // Create additional model object
+    const additionalModel = {
+      id: modelId,
+      url: '',
+      position: '0 0 0',
+      rotation: '0 0 0',
+      scale: '1 1 1',
+      visible: true
+    };
+
+    // Initialize additionalModels array if it doesn't exist
+    if (!this.currentModel.exhibit.additionalModels) {
+      this.currentModel.exhibit.additionalModels = [];
+    }
+
+    // Add to config
+    this.currentModel.exhibit.additionalModels.push(additionalModel);
+
+    // Create UI element
+    this.createAdditionalModelUI(additionalModel, modelIndex);
+
+    this.showNotification('Additional model added', 'success');
+  }
+
+  createAdditionalModelUI(model, index) {
+    const container = document.getElementById('additional-models-container');
+    
+    const modelItem = document.createElement('div');
+    modelItem.className = 'additional-model-item';
+    modelItem.setAttribute('data-model-id', model.id);
+    modelItem.setAttribute('data-model-index', index);
+
+    modelItem.innerHTML = `
+      <h4>Additional Model ${index + 1}</h4>
+      <div class="url-input-container">
+        <input type="url" class="additional-model-url" placeholder="https://..." value="${model.url}">
+        <button class="action-btn load-additional-model">Load</button>
+        <button class="action-btn preview-additional-model">Preview</button>
+        <button class="action-btn delete delete-additional-model">Delete</button>
+      </div>
+    `;
+
+    // Add event listeners
+    const urlInput = modelItem.querySelector('.additional-model-url');
+    const loadBtn = modelItem.querySelector('.load-additional-model');
+    const previewBtn = modelItem.querySelector('.preview-additional-model');
+    const deleteBtn = modelItem.querySelector('.delete-additional-model');
+
+    urlInput.addEventListener('input', (e) => {
+      this.updateAdditionalModelUrl(model.id, e.target.value);
+    });
+
+    loadBtn.addEventListener('click', () => {
+      this.loadAdditionalModel(model.id);
+    });
+
+    previewBtn.addEventListener('click', () => {
+      this.previewAdditionalModel(model.id);
+    });
+
+    deleteBtn.addEventListener('click', () => {
+      this.deleteAdditionalModel(model.id);
+    });
+
+    container.appendChild(modelItem);
+  }
+
+  updateAdditionalModelUrl(modelId, url) {
+    if (!this.currentModel || !this.currentModel.exhibit.additionalModels) return;
+
+    const model = this.currentModel.exhibit.additionalModels.find(m => m.id === modelId);
+    if (model) {
+      model.url = url;
+    }
+  }
+
+  loadAdditionalModel(modelId) {
+    if (!this.currentModel || !this.currentModel.exhibit.additionalModels) return;
+
+    const model = this.currentModel.exhibit.additionalModels.find(m => m.id === modelId);
+    if (!model || !model.url) {
+      this.showNotification('Please enter a model URL', 'error');
+      return;
+    }
+
+    // Create asset if it doesn't exist
+    let assetElement = document.querySelector(`#${modelId}`);
+    if (!assetElement) {
+      assetElement = document.createElement('a-asset-item');
+      assetElement.id = modelId;
+      assetElement.setAttribute('type', 'gltf');
+      assetElement.setAttribute('data-asset-type', '3d-model');
+      
+      const assets = document.querySelector('a-assets');
+      if (assets) {
+        assets.appendChild(assetElement);
+      }
+    }
+
+    // Update asset URL
+    assetElement.setAttribute('src', model.url);
+
+    // Create or update model entity in scene
+    this.createAdditionalModelEntity(model);
+
+    this.showNotification('Additional model loaded', 'success');
+  }
+
+  createAdditionalModelEntity(model) {
+    const exhibitEntity = document.getElementById(this.currentModel.exhibit.id);
+    if (!exhibitEntity) return;
+
+    // Remove existing entity if it exists
+    const existingEntity = exhibitEntity.querySelector(`#${model.id}`);
+    if (existingEntity) {
+      existingEntity.remove();
+    }
+
+    // Create new entity
+    const modelEntity = document.createElement('a-entity');
+    modelEntity.id = model.id;
+    modelEntity.setAttribute('gltf-model', `#${model.id}`);
+    modelEntity.setAttribute('position', model.position);
+    modelEntity.setAttribute('rotation', model.rotation);
+    modelEntity.setAttribute('scale', model.scale);
+    modelEntity.setAttribute('visible', model.visible);
+    modelEntity.classList.add('additional-model');
+
+    exhibitEntity.appendChild(modelEntity);
+  }
+
+  previewAdditionalModel(modelId) {
+    if (!this.currentModel || !this.currentModel.exhibit.additionalModels) return;
+
+    const model = this.currentModel.exhibit.additionalModels.find(m => m.id === modelId);
+    if (!model || !model.url) {
+      this.showNotification('Please enter a model URL', 'error');
+      return;
+    }
+
+    // Create temporary preview entity
+    const previewEntity = document.createElement('a-entity');
+    previewEntity.id = `preview_${modelId}`;
+    previewEntity.setAttribute('gltf-model', model.url);
+    previewEntity.setAttribute('position', '0 2 0');
+    previewEntity.setAttribute('scale', '0.5 0.5 0.5');
+    previewEntity.classList.add('preview-model');
+
+    const scene = document.querySelector('a-scene');
+    scene.appendChild(previewEntity);
+
+    // Remove preview after 5 seconds
+    setTimeout(() => {
+      if (previewEntity.parentNode) {
+        previewEntity.remove();
+      }
+    }, 5000);
+
+    this.showNotification('Model preview created (5 seconds)', 'info');
+  }
+
+  deleteAdditionalModel(modelId) {
+    if (!this.currentModel || !this.currentModel.exhibit.additionalModels) return;
+
+    if (confirm('Are you sure you want to delete this additional model?')) {
+      // Remove from config
+      const modelIndex = this.currentModel.exhibit.additionalModels.findIndex(m => m.id === modelId);
+      if (modelIndex !== -1) {
+        this.currentModel.exhibit.additionalModels.splice(modelIndex, 1);
+      }
+
+      // Remove from scene
+      const exhibitEntity = document.getElementById(this.currentModel.exhibit.id);
+      if (exhibitEntity) {
+        const modelEntity = exhibitEntity.querySelector(`#${modelId}`);
+        if (modelEntity) {
+          modelEntity.remove();
+        }
+      }
+
+      // Remove asset
+      const assetElement = document.querySelector(`#${modelId}`);
+      if (assetElement) {
+        assetElement.remove();
+      }
+
+      // Remove UI element
+      const uiElement = document.querySelector(`[data-model-id="${modelId}"]`);
+      if (uiElement) {
+        uiElement.remove();
+      }
+
+      // Renumber remaining models
+      this.renumberAdditionalModels();
+
+      this.showNotification('Additional model deleted', 'success');
+    }
+  }
+
+  renumberAdditionalModels() {
+    const container = document.getElementById('additional-models-container');
+    const modelItems = container.querySelectorAll('.additional-model-item');
+    
+    modelItems.forEach((item, index) => {
+      const title = item.querySelector('h4');
+      if (title) {
+        title.textContent = `Additional Model ${index + 1}`;
+      }
+      item.setAttribute('data-model-index', index);
+    });
+  }
+
+  loadAdditionalModelsUI(exhibit) {
+    this.clearAdditionalModelsUI();
+    
+    if (exhibit.additionalModels && exhibit.additionalModels.length > 0) {
+      exhibit.additionalModels.forEach((model, index) => {
+        this.createAdditionalModelUI(model, index);
+      });
+    }
+  }
+
+  clearAdditionalModelsUI() {
+    const container = document.getElementById('additional-models-container');
+    container.innerHTML = '';
   }
 
   loadNewModel() {
@@ -4152,6 +4432,7 @@ class ModelEditor {
         <!-- Camera Rig with Enhanced Controls -->
         <a-entity
             id="cameraRig"
+            enhanced-mobile-controls="speed: 3"
             movement-controls="fly: false; constrainToNavMesh: false;"
             navigator="cameraRig: #cameraRig; cameraHead: #head; collisionEntities: .collision; ignoreEntities: .clickable"
             position="0 0 0"
