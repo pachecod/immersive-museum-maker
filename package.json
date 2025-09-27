@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "add:license": "node scripts/add-license-header.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["vr", "webxr", "aframe", "museum", "education", "immersive"],

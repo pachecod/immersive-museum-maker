@@ -1,4 +1,14 @@
 <!DOCTYPE html>
+<!--
+Immersive Museum Maker - A tool that helps people create immersive storytelling worlds using the A-Frame open source library. Output is optimized for mobile phones, desktop (WASD keys) and the Meta Quest headset browser.
+
+Copyright (C) 2025  Dan Pacheco
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License in the LICENSE file of this repository for more details.
+-->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -47,9 +57,10 @@
       items.forEach((item) => {
         const hosted = !!item.isHosted;
         let hostedUrl = item.hostedUrl;
-        // Prefer export/index.html in the link if backend stored root index.html
-        if (hostedUrl && /\/index\.html$/i.test(hostedUrl) && !/\/export\/index\.html$/i.test(hostedUrl)) {
-          hostedUrl = hostedUrl.replace(/\/index\.html$/i, '/export/index.html');
+        // Prefer museum-scene.html or export/index.html in the link if backend stored root index.html
+        if (hostedUrl && /\/index\.html$/i.test(hostedUrl) && !/\/export\/index\.html$/i.test(hostedUrl) && !/\/museum-scene\.html$/i.test(hostedUrl)) {
+          // Check if museum-scene.html exists, otherwise fall back to export/index.html
+          hostedUrl = hostedUrl.replace(/\/index\.html$/i, '/museum-scene.html');
         }
         // Derive a readable path label from hostedUrl, e.g., "Bob/export/index.html"
         let hostedLabel = '';
@@ -67,7 +78,8 @@
           <div class="host-row"><b>🌐 Hosted at:</b> ${hosted && hostedUrl ? `<a class=\"host-link\" href=\"${hostedUrl}\" target=\"_blank\">${hostedLabel}</a>` : '<span class=\"muted\">not hosted</span>'}</div>
           ${hosted && item.hostedAt ? `<div class=\"meta\"><b>Hosted on:</b> ${new Date(item.hostedAt).toLocaleString()}</div>` : ''}
           <div class="row" style="margin-top:12px">
-            <a class="btn blue" href="/professor/download/${item.fileName}">⬇️ Download</a>
+            <a class="btn blue" href="/professor/download/${item.fileName}">⬇️ Download Package</a>
+            <a class="btn green" href="/professor/download-html/${item.fileName}">📄 Download HTML File</a>
             <button class="btn yellow" onclick="unhost('${item.fileName}')">🔗 Unhost</button>
             <button class="btn red" onclick="del('${item.fileName}')">🗑️ Delete</button>
           </div>
