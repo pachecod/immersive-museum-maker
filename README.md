@@ -15,7 +15,7 @@ The Immersive Museum Maker (IMM)is a web-based tool for creating immersive 3D mu
 
 The IMM is currently optimized to render projects using the A-Frame open source platform, but there are future plans to also support Babylon.js. The output is optimized to work on mobile browsers, desktop browsers and Meta Quest 3 headset browsers, in that priority order. Navigation on mobile is achieved by moving the phone around to choose direction, holding one thumb down to move forward, and holding two thumbs down to move backward. Navigation on desktop uses WASD and mouse look. Navigation on Quest is similar to mobile, but using handsets for portal-based jumping.
 
-## 🎯 What It Does
+## What It Does
 
 The Immersive Museum Maker transforms the complex process of creating 3D virtual environments into an intuitive, web-based editor. Users can:
 
@@ -25,7 +25,7 @@ The Immersive Museum Maker transforms the complex process of creating 3D virtual
 - **Enable Interactivity**: Add hotspots, information panels, and navigation elements
 - **Export & Share**: Generate standalone HTML files that work across all supported devices
 
-## 🌟 Key Features
+## Key Features
 
 ### **Scene Building**
 - **Walls & Ceilings System**: Add, position, and customize architectural elements
@@ -73,7 +73,7 @@ node server.js
 # Open http://localhost:3001 in your browser
 ```
 
-## 🎓 Educational Use
+## Educational Use
 
 Perfect for:
 - **Museum Education**: Create virtual field trips and interactive exhibits
@@ -152,9 +152,9 @@ node server.js
 
 - ** Coming soon!
 
-## 🤝 Contributing
+## Contributing
 
-I welcome contributions! Please see our contributing guidelines and code of conduct.
+I welcome contributions of all types, including feedback and code suggestions. Please see our contributing guidelines and code of conduct.
 
 ## License
 
