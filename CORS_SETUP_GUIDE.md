@@ -36,7 +36,42 @@ Access-Control-Expose-Headers: Content-Length, Content-Range
 
 ## Hosting Solutions
 
-### 1. Netlify (Recommended for Static Assets)
+### Quick Comparison
+
+| Service | Cost | Stability | CORS Support | Best For |
+|---------|------|-----------|--------------|----------|
+| **GitHub Pages** | Free | ⭐⭐⭐⭐⭐ | ✅ Built-in | Small/medium assets |
+| **Netlify** | Free tier | ⭐⭐⭐⭐⭐ | ✅ Configurable | Static sites |
+| **Vercel** | Free tier | ⭐⭐⭐⭐⭐ | ✅ Configurable | Performance-focused |
+| **Cloudflare R2** | $0.015/GB | ⭐⭐⭐⭐⭐ | ✅ Configurable | High-traffic apps |
+| **AWS S3** | $0.023/GB | ⭐⭐⭐⭐⭐ | ✅ Configurable | Enterprise scale |
+
+### 1. GitHub Pages (Cheapest & Most Stable)
+
+**Setup:**
+1. Create a new repository for assets (e.g., `immersive-museum-assets`)
+2. Upload your files to the repository
+3. Use raw GitHub URLs for assets:
+   ```
+   https://raw.githubusercontent.com/yourusername/immersive-museum-assets/main/models/chair.glb
+   https://raw.githubusercontent.com/yourusername/immersive-museum-assets/main/textures/wood.jpg
+   ```
+
+**Pros:**
+- **Completely free** (no bandwidth limits for typical use)
+- **Highly stable** (GitHub infrastructure)
+- **No CORS issues** (GitHub serves with proper headers)
+- **Version control** for your assets
+- **Easy updates** via Git
+
+**Cons:**
+- 1GB storage limit per repository
+- 100GB bandwidth per month
+- File size limit of 100MB per file
+
+**Best for:** Small to medium asset collections, templates, and demos
+
+### 2. Netlify (Recommended for Static Assets)
 
 **Setup:**
 1. Create a `_headers` file in your site root:
@@ -102,18 +137,24 @@ Create `vercel.json`:
 - Easy GitHub integration
 - Free tier available
 
-### 3. GitHub Pages
+### 3. Cloudflare R2 (Pay-as-you-go)
 
 **Setup:**
-GitHub Pages doesn't support custom headers, but you can use a proxy service:
+1. Create a Cloudflare R2 bucket
+2. Configure CORS settings in the dashboard
+3. Use the public URL for assets
 
-1. Use a service like [CORS Anywhere](https://github.com/Rob--W/cors-anywhere) (for development)
-2. Or host assets on a CORS-enabled service and reference them
+**Pros:**
+- **Very cheap** ($0.015/GB storage, $0.40/GB egress)
+- **Highly stable** (Cloudflare infrastructure)
+- **Global CDN** included
+- **S3-compatible** API
 
-**Limitations:**
-- No custom headers support
-- File size limits
-- Requires workarounds for CORS
+**Cons:**
+- Requires Cloudflare account
+- Pay-as-you-go pricing (though very low)
+
+**Best for:** High-traffic applications, large asset collections
 
 ### 4. AWS S3 + CloudFront
 
@@ -161,7 +202,7 @@ GitHub Pages doesn't support custom headers, but you can use a proxy service:
 **Pros:**
 - Highly scalable
 - CDN distribution
-- Pay-as-you-go pricing
+- Pay-as-you-go pricing (~$0.023/GB storage, $0.09/GB transfer)
 
 **Cons:**
 - More complex setup
