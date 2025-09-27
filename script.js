@@ -1122,16 +1122,20 @@ class MuseumProject {
     ground.setAttribute('width', this.config.environment.ground.size.split(' ')[0]);
     ground.setAttribute('height', this.config.environment.ground.size.split(' ')[1]);
     ground.setAttribute('rotation', '-90 0 0');
-    // Set material after ensuring asset is loaded
-    this.setMaterialWhenAssetReady(ground, '#ground', `repeat: ${this.config.environment.ground.repeat}; transparent: false; opacity: 1; normalTextureRepeat: ${this.config.environment.ground.repeat}; roughness: 0.8`);
+    // Set material directly instead of using asset system
+    if (this.config.environment.ground.texture) {
+      ground.setAttribute('material', `src: ${this.config.environment.ground.texture}; repeat: ${this.config.environment.ground.repeat}; transparent: false; opacity: 1; normalTextureRepeat: ${this.config.environment.ground.repeat}; roughness: 0.8`);
+    }
     ground.setAttribute('shadow', 'cast: false; receive: true');
     ground.classList.add('ground', 'clickable');
     scene.appendChild(ground);
     
     // Sky
     const sky = document.createElement('a-sky');
-    // Set material after ensuring asset is loaded
-    this.setMaterialWhenAssetReady(sky, '#sky', 'opacity: 1.0');
+    // Set material directly instead of using asset system
+    if (this.config.environment.sky.day) {
+      sky.setAttribute('material', 'src', this.config.environment.sky.day);
+    }
     scene.appendChild(sky);
     
     console.log('Environment created:', { ground, sky, ambientLight, directionalLight });
