@@ -1,3 +1,13 @@
+/*
+Immersive Museum Maker - A tool that helps people create immersive storytelling worlds using the A-Frame open source library. Output is optimized for mobile phones, desktop (WASD keys) and the Meta Quest headset browser.
+
+Copyright (C) 2025  Dan Pacheco
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License in the LICENSE file of this repository for more details.
+*/
 // Agriquest Vegetable Museum - Main Script
 // Generated from Immersive Museum Architecture
 
@@ -116,6 +126,14 @@ AFRAME.registerComponent("spot", {
     var data = this.data;
     var el = this.el;
     
+    // Check if this element already has hotspot visuals to prevent duplication
+    if (el.hasAttribute('geometry') && el.getAttribute('geometry').primitive === 'circle') {
+      console.log('Spot component already initialized for element:', el.id);
+      return;
+    }
+    
+    console.log('Initializing spot component for element:', el.id);
+    
     // Create hotspot visual
     el.setAttribute("geometry", { primitive: "circle", radius: 0.5 });
     el.setAttribute("material", {
@@ -140,13 +158,13 @@ AFRAME.registerComponent("spot", {
     this.gazeTimeout = null;
     this.gazeThreshold = 1500; // 1.5 seconds gaze to activate
     
-    // Create audio control buttons
-    if (data.audio) {
+    // Create audio control buttons (only if not already created)
+    if (data.audio && !el.querySelector('.audio-controls')) {
       this.createAudioControls(data);
     }
     
-    // Create label if provided
-    if (data.label) {
+    // Create label if provided (only if not already created)
+    if (data.label && !el.querySelector('a-text')) {
       this.createLabel(data);
     }
     
@@ -159,6 +177,7 @@ AFRAME.registerComponent("spot", {
   createAudioControls: function(data) {
     // Container for audio controls
     this.audioControls = document.createElement("a-entity");
+    this.audioControls.classList.add('audio-controls');
     this.audioControls.setAttribute("position", "0 -0.8 0");
     
     // Play button
@@ -762,11 +781,46 @@ class MuseumProject {
 
   async init() {
     try {
-      const response = await fetch('./config.json');
-      this.config = await response.json();
+      // Determine template from URL
+      const template = this.getTemplateFromURL();
+      console.log('Detected template from URL:', template);
+      
+      let config;
+      if (template) {
+        // Load template-specific config
+        const response = await fetch(`templates/${template}.json`);
+        if (!response.ok) {
+          throw new Error(`Failed to load template config: ${response.status}`);
+        }
+        config = await response.json();
+        console.log(`Loaded template config for: ${template}`, config);
+      } else {
+        // Load default config
+        const response = await fetch('./config.json');
+        if (!response.ok) {
+          throw new Error(`Failed to load config: ${response.status}`);
+        }
+        config = await response.json();
+        console.log('Loaded default config:', config);
+      }
+      
+      this.config = config;
       museumConfig = this.config; // Make available globally
       
+      // Ensure there's always a default template
+      if (!museumConfig.template) {
+        museumConfig.template = {
+          id: template || 'outdoor-exploration',
+          name: template ? this.getTemplateDisplayName(template) : 'Outdoor Exploration'
+        };
+      }
+      
       console.log('Loaded museum config:', this.config);
+      // Update template display as soon as config is available
+      const editor = window.modelEditor;
+      if (editor && typeof editor.updateCurrentTemplateDisplay === 'function') {
+        editor.updateCurrentTemplateDisplay();
+      }
       
       // Reinitialize sound effects now that config is available
       const soundEffectsEntity = document.querySelector('[sound-effects]');
@@ -776,14 +830,59 @@ class MuseumProject {
       this.setupMuseum();
     } catch (error) {
       console.error('Failed to load museum config:', error);
-      this.showErrorMessage('Failed to load museum configuration. Please check that config.json exists.');
+      this.showErrorMessage('Failed to load museum configuration. Please check that the template exists.');
     }
+  }
+
+  getTemplateFromURL() {
+    const path = window.location.pathname;
+    const segments = path.split('/').filter(segment => segment.length > 0);
+    
+    // If we're at root, no template
+    if (segments.length === 0) {
+      return null;
+    }
+    
+    // First segment should be the template name
+    const template = segments[0];
+    
+    // Handle template aliases
+    const templateAliases = {
+      'house': 'house-template',
+      'outdoor': 'outdoor-exploration',
+      'classroom': 'classroom'
+    };
+    
+    const actualTemplate = templateAliases[template] || template;
+    
+    // Validate template name (basic check)
+    if (/^[a-zA-Z0-9_-]+$/.test(actualTemplate)) {
+      return actualTemplate;
+    }
+    
+    return null;
+  }
+
+  getTemplateDisplayName(templateId) {
+    const displayNames = {
+      'outdoor-exploration': 'Outdoor Exploration',
+      'house': 'House Template',
+      'house-template': 'House Template',
+      'outdoor': 'Outdoor Exploration'
+    };
+    return displayNames[templateId] || templateId;
   }
 
   setupMuseum() {
     console.log('Setting up museum with config:', this.config);
+    
+    // Create environment first to ensure basic scene structure
+    this.createEnvironmentSafe();
+    
+    // Create assets
     this.createAssets();
-    this.createEnvironment();
+    
+    // Create info display
     this.createInfoDisplay();
     
     // Create exhibits immediately - don't wait for assets to load
@@ -800,6 +899,56 @@ class MuseumProject {
     if (soundEffectsEntity && soundEffectsEntity.components['sound-effects']) {
       soundEffectsEntity.components['sound-effects'].reinitialize();
     }
+    
+    // Add a fallback check to ensure scene is visible
+    setTimeout(() => {
+      this.ensureSceneVisibility();
+    }, 2000);
+  }
+
+  createEnvironmentSafe() {
+    try {
+      if (!this.config || !this.config.environment) {
+        console.warn('Environment config missing; rendering minimal fallback environment');
+        const scene = document.querySelector('a-scene');
+        if (scene) {
+          const ambient = document.createElement('a-entity');
+          ambient.setAttribute('light', { type: 'ambient', color: '#BBB', intensity: 1 });
+          scene.appendChild(ambient);
+          const sky = document.createElement('a-sky');
+          sky.setAttribute('color', '#222');
+          scene.appendChild(sky);
+        }
+        return;
+      }
+      this.createEnvironment();
+    } catch (error) {
+      console.error('Error creating environment, using fallback:', error);
+      const scene = document.querySelector('a-scene');
+      if (scene) {
+        const ambient = document.createElement('a-entity');
+        ambient.setAttribute('light', { type: 'ambient', color: '#BBB', intensity: 1 });
+        scene.appendChild(ambient);
+        const sky = document.createElement('a-sky');
+        sky.setAttribute('color', '#222');
+        scene.appendChild(sky);
+        const ground = document.createElement('a-plane');
+        ground.setAttribute('width', 50);
+        ground.setAttribute('height', 50);
+        ground.setAttribute('rotation', '-90 0 0');
+        ground.setAttribute('color', '#3a3a3a');
+        ground.classList.add('ground');
+        scene.appendChild(ground);
+      }
+    }
+  }
+
+  // Helper function to set material with a small delay to avoid texture warnings
+  setMaterialWhenAssetReady(element, assetId, additionalProps = '') {
+    // Set material immediately
+    const materialProps = `src: ${assetId}; ${additionalProps}`;
+    element.setAttribute('material', materialProps);
+    console.log(`✅ Set material for ${element.id} with ${assetId}`);
   }
 
   createAssets() {
@@ -936,6 +1085,19 @@ class MuseumProject {
   createEnvironment() {
     const scene = document.querySelector('a-scene');
     
+    // Clear existing environment elements first to prevent duplication
+    const existingGround = scene.querySelector('a-plane.ground');
+    if (existingGround) {
+      console.log('Clearing existing ground');
+      existingGround.remove();
+    }
+    
+    const existingSky = scene.querySelector('a-sky');
+    if (existingSky) {
+      console.log('Clearing existing sky');
+      existingSky.remove();
+    }
+    
     // Lighting
     const ambientLight = document.createElement('a-entity');
     ambientLight.setAttribute('light', {
@@ -960,21 +1122,16 @@ class MuseumProject {
     ground.setAttribute('width', this.config.environment.ground.size.split(' ')[0]);
     ground.setAttribute('height', this.config.environment.ground.size.split(' ')[1]);
     ground.setAttribute('rotation', '-90 0 0');
-    ground.setAttribute('material', {
-      src: '#ground',
-      repeat: this.config.environment.ground.repeat,
-      transparent: false,
-      opacity: 1,
-      normalTextureRepeat: this.config.environment.ground.repeat,
-      roughness: 0.8
-    });
+    // Set material after ensuring asset is loaded
+    this.setMaterialWhenAssetReady(ground, '#ground', `repeat: ${this.config.environment.ground.repeat}; transparent: false; opacity: 1; normalTextureRepeat: ${this.config.environment.ground.repeat}; roughness: 0.8`);
     ground.setAttribute('shadow', 'cast: false; receive: true');
     ground.classList.add('ground', 'clickable');
     scene.appendChild(ground);
     
     // Sky
     const sky = document.createElement('a-sky');
-    sky.setAttribute('src', '#sky');
+    // Set material after ensuring asset is loaded
+    this.setMaterialWhenAssetReady(sky, '#sky', 'opacity: 1.0');
     scene.appendChild(sky);
     
     console.log('Environment created:', { ground, sky, ambientLight, directionalLight });
@@ -999,10 +1156,123 @@ class MuseumProject {
     ceiling.setAttribute('depth', this.config.environment.physics.ceiling.size.split(' ')[2]);
     ceiling.setAttribute('visible', this.config.environment.physics.ceiling.visible);
     scene.appendChild(ceiling);
+    
+    // Create walls and ceilings from config
+    this.createWallsAndCeilings();
+  }
+
+  createWallsAndCeilings() {
+    const scene = document.querySelector('a-scene');
+    
+    // Clear existing walls and ceilings first to prevent duplication
+    const existingWalls = scene.querySelectorAll('.wall-element');
+    const existingCeilings = scene.querySelectorAll('.ceiling-element');
+    existingWalls.forEach(wall => wall.remove());
+    existingCeilings.forEach(ceiling => ceiling.remove());
+    
+    // Create walls
+    if (this.config.walls && Array.isArray(this.config.walls)) {
+      this.config.walls.forEach(wall => {
+        this.createWallEntity(wall);
+      });
+    }
+    
+    // Create ceilings
+    if (this.config.ceilings && Array.isArray(this.config.ceilings)) {
+      this.config.ceilings.forEach(ceiling => {
+        this.createCeilingEntity(ceiling);
+      });
+    }
+  }
+
+  createWallEntity(wall) {
+    const scene = document.querySelector('a-scene');
+    if (!scene) return;
+
+    const wallEntity = document.createElement('a-plane');
+    wallEntity.setAttribute('id', `wall-${wall.id}`);
+    wallEntity.setAttribute('position', `${wall.position.x} ${wall.position.y} ${wall.position.z}`);
+    wallEntity.setAttribute('rotation', `${wall.rotation.x} ${wall.rotation.y} ${wall.rotation.z}`);
+    wallEntity.setAttribute('width', wall.width);
+    wallEntity.setAttribute('height', wall.height);
+    wallEntity.setAttribute('geometry', `primitive: plane; width: ${wall.width}; height: ${wall.height}`);
+    const tilingX = wall.tilingX || 1;
+    const tilingY = wall.tilingY || 1;
+    const brightness = wall.brightness || 1;
+    const color = wall.color || '#cccccc';
+    
+    if (wall.texture) {
+      const opacity = wall.transparent ? 0.3 : brightness;
+      this.setMaterialWhenAssetReady(wallEntity, wall.texture, `side: double; repeat: ${tilingX} ${tilingY}; opacity: ${opacity}; depthTest: true; depthWrite: true; transparent: ${wall.transparent || false}`);
+    } else {
+      const opacity = wall.transparent ? 0.3 : 1;
+      wallEntity.setAttribute('material', `color: ${color}; side: double; depthTest: true; depthWrite: true; transparent: ${wall.transparent || false}; opacity: ${opacity}`);
+    }
+    wallEntity.setAttribute('visible', wall.visible);
+    if (wall.renderOrder !== undefined) {
+      wallEntity.setAttribute('render-order', wall.renderOrder);
+    } else {
+      wallEntity.setAttribute('render-order', -1); // Default to render behind other objects
+    }
+    wallEntity.classList.add('wall-element');
+
+    // Add manipulation gizmo for editor mode
+    if (window.modelEditor) {
+      this.createWallGizmo(wall);
+    }
+
+    scene.appendChild(wallEntity);
+  }
+
+  createCeilingEntity(ceiling) {
+    const scene = document.querySelector('a-scene');
+    if (!scene) return;
+
+    const ceilingEntity = document.createElement('a-plane');
+    ceilingEntity.setAttribute('id', `ceiling-${ceiling.id}`);
+    ceilingEntity.setAttribute('position', `${ceiling.position.x} ${ceiling.position.y} ${ceiling.position.z}`);
+    ceilingEntity.setAttribute('rotation', `${ceiling.rotation.x} ${ceiling.rotation.y} ${ceiling.rotation.z}`);
+    ceilingEntity.setAttribute('width', ceiling.width);
+    ceilingEntity.setAttribute('height', ceiling.height);
+    ceilingEntity.setAttribute('geometry', `primitive: plane; width: ${ceiling.width}; height: ${ceiling.height}`);
+    const tilingX = ceiling.tilingX || 1;
+    const tilingY = ceiling.tilingY || 1;
+    const brightness = ceiling.brightness || 1;
+    const color = ceiling.color || '#ffffff';
+    
+    if (ceiling.texture) {
+      const opacity = ceiling.transparent ? 0.3 : brightness;
+      this.setMaterialWhenAssetReady(ceilingEntity, ceiling.texture, `side: double; repeat: ${tilingX} ${tilingY}; opacity: ${opacity}; depthTest: true; depthWrite: true; transparent: ${ceiling.transparent || false}`);
+    } else {
+      const opacity = ceiling.transparent ? 0.3 : 1;
+      ceilingEntity.setAttribute('material', `color: ${color}; side: double; depthTest: true; depthWrite: true; transparent: ${ceiling.transparent || false}; opacity: ${opacity}`);
+    }
+    ceilingEntity.setAttribute('visible', ceiling.visible);
+    if (ceiling.renderOrder !== undefined) {
+      ceilingEntity.setAttribute('render-order', ceiling.renderOrder);
+    } else {
+      ceilingEntity.setAttribute('render-order', -1); // Default to render behind other objects
+    }
+    ceilingEntity.classList.add('ceiling-element');
+
+    // Add manipulation gizmo for editor mode
+    if (window.modelEditor) {
+      this.createCeilingGizmo(ceiling);
+    }
+
+    scene.appendChild(ceilingEntity);
   }
 
   createInfoDisplay() {
     const scene = document.querySelector('a-scene');
+    
+    // Clear existing info display first to prevent duplication
+    const existingInfoDisplay = scene.querySelector('#info-display');
+    if (existingInfoDisplay) {
+      console.log('Clearing existing info display');
+      existingInfoDisplay.remove();
+    }
+    
     const infoDisplay = document.createElement('a-entity');
     infoDisplay.id = 'info-display';
     infoDisplay.setAttribute('position', this.config.infoDisplay.position);
@@ -1019,7 +1289,8 @@ class MuseumProject {
     imagePanel.setAttribute('position', '0 0 0');
     imagePanel.setAttribute('width', this.config.infoDisplay.panel.size.split(' ')[0]);
     imagePanel.setAttribute('height', this.config.infoDisplay.panel.size.split(' ')[1]);
-    imagePanel.setAttribute('material', 'src: #image1; side: double; shader: flat');
+    // Set material after ensuring asset is loaded
+    this.setMaterialWhenAssetReady(imagePanel, '#image1', 'side: double; shader: flat');
     imagePanel.setAttribute('visible', 'true');
     imagePanel.classList.add('clickable');
     panelContainer.appendChild(imagePanel);
@@ -1143,6 +1414,13 @@ class MuseumProject {
   createExhibits() {
     const scene = document.querySelector('a-scene');
     
+    // Always clear existing exhibits first to prevent duplication
+    const existingExhibits = scene.querySelectorAll('[id*="-exhibit"]');
+    if (existingExhibits.length > 0) {
+      console.log(`Clearing ${existingExhibits.length} existing exhibits before creating new ones`);
+      existingExhibits.forEach(exhibit => exhibit.remove());
+    }
+    
     // Check if assets are loaded
     const assets = document.querySelector('a-assets');
     const modelAssets = assets.querySelectorAll('a-asset-item');
@@ -1212,8 +1490,10 @@ class MuseumProject {
       model.setAttribute('data-model-name', exhibit.name);
       console.log(`Created 3D model: ${exhibit.model.id} (${exhibit.name})`);
       
-      // Add a visible label above the model for easy identification
-      this.addModelLabel(model, exhibit.name || exhibit.id);
+      // Add a visible label above the model for easy identification (if labels are enabled)
+      if (this.labelsVisible === true) {
+        this.addModelLabel(model, exhibit.name || exhibit.id);
+      }
       
       // === MODEL LOADING EVENT HANDLERS ===
       // Handle successful model loading
@@ -1339,7 +1619,8 @@ class MuseumProject {
     const imagePanel = document.querySelector("#image-panel");
     
     const updatePanelImage = () => {
-      imagePanel.setAttribute("material", "src", images[this.currentImageIndex]);
+      // Set material after ensuring asset is loaded
+      this.setMaterialWhenAssetReady(imagePanel, images[this.currentImageIndex], 'side: double; shader: flat');
       
       const infoText = document.querySelector("#info-text");
       const content = this.config.infoDisplay.text.content;
@@ -1445,18 +1726,36 @@ class ModelEditor {
   }
 
   init() {
-    this.labelsVisible = true; // Labels are visible by default
+    this.labelsVisible = false; // Labels are hidden by default
     this.realtimeUpdatesEnabled = false; // Start with updates disabled
     this.setupEventListeners();
     this.populateModelSelector();
     this.startConfigMonitoring();
     this.lastConfigHash = JSON.stringify(museumConfig);
     
+    // Initialize walls and ceilings functionality
+    this.initWallsAndCeilings();
+    
+    // Disable gaze cursor in editor mode for better mouse interaction
+    this.disableGazeCursorInEditor();
+    
     // Load environment config after museum project is fully initialized
     setTimeout(() => {
       this.loadEnvironmentFromConfig();
     }, 1000);
     
+    // Ensure template display initializes promptly even if config loads later
+    setTimeout(() => {
+      if (typeof this.updateCurrentTemplateDisplay === 'function') {
+        this.updateCurrentTemplateDisplay();
+      }
+    }, 500);
+    setTimeout(() => {
+      if (typeof this.updateCurrentTemplateDisplay === 'function') {
+        this.updateCurrentTemplateDisplay();
+      }
+    }, 2000);
+
     // Enable real-time updates after a delay to allow initial setup to complete
     setTimeout(() => {
       this.realtimeUpdatesEnabled = true;
@@ -1469,6 +1768,17 @@ class ModelEditor {
     document.getElementById('toggle-editor').addEventListener('click', () => {
       this.togglePanel();
     });
+
+    // Floating toggle to reopen editor when hidden
+    const floatingToggle = document.getElementById('editor-toggle-floating');
+    if (floatingToggle) {
+      floatingToggle.addEventListener('click', () => {
+        const panel = document.getElementById('editor-panel');
+        panel.classList.remove('hidden');
+        document.getElementById('toggle-editor').textContent = 'Hide';
+        floatingToggle.style.display = 'none';
+      });
+    }
 
     // Model selection
     document.getElementById('model-selector').addEventListener('change', (e) => {
@@ -1764,6 +2074,9 @@ class ModelEditor {
     
     // Load slideshow settings from config
     this.loadSlideshowFromConfig();
+    
+    // Update template display on initialization
+    this.updateCurrentTemplateDisplay();
   }
 
   setupEnvironmentEventListeners() {
@@ -1827,25 +2140,54 @@ class ModelEditor {
       this.forceUpdateSlideshowFromForm();
     });
 
+    // Real-time updates for slideshow position
+    document.getElementById('slideshow-position-x').addEventListener('input', () => {
+      this.forceUpdateSlideshowFromForm();
+    });
+
+    document.getElementById('slideshow-position-y').addEventListener('input', () => {
+      this.forceUpdateSlideshowFromForm();
+    });
+
+    document.getElementById('slideshow-position-z').addEventListener('input', () => {
+      this.forceUpdateSlideshowFromForm();
+    });
+
+    // Real-time updates for slideshow rotation
+    document.getElementById('slideshow-rotation-x').addEventListener('input', () => {
+      this.forceUpdateSlideshowFromForm();
+    });
+
+    document.getElementById('slideshow-rotation-y').addEventListener('input', () => {
+      this.forceUpdateSlideshowFromForm();
+    });
+
+    document.getElementById('slideshow-rotation-z').addEventListener('input', () => {
+      this.forceUpdateSlideshowFromForm();
+    });
+
     console.log('Slideshow real-time event listeners set up');
   }
 
   togglePanel() {
     const panel = document.getElementById('editor-panel');
     const toggleBtn = document.getElementById('toggle-editor');
+    const floatingToggle = document.getElementById('editor-toggle-floating');
     
     if (panel.classList.contains('hidden')) {
       panel.classList.remove('hidden');
       toggleBtn.textContent = 'Hide';
+      if (floatingToggle) floatingToggle.style.display = 'none';
     } else {
       panel.classList.add('hidden');
       toggleBtn.textContent = 'Show';
+      if (floatingToggle) floatingToggle.style.display = 'block';
     }
   }
 
   populateModelSelector() {
     const selector = document.getElementById('model-selector');
-    selector.innerHTML = '<option value="">Choose a model...</option>';
+    selector.innerHTML = '<option value="">Choose Scene...</option>';
     
     if (museumConfig && museumConfig.exhibits) {
       museumConfig.exhibits.forEach((exhibit, index) => {
@@ -2522,6 +2864,7 @@ class ModelEditor {
     previewModel.setAttribute('rotation', '0 0 0');
     
     // Add a preview label
+    // Add label to preview model (always show for previews)
     this.addModelLabel(previewModel, 'PREVIEW: ' + url.split('/').pop());
     
     // Add event listeners
@@ -2945,6 +3288,24 @@ class ModelEditor {
     config.infoDisplay.text.content.slide2 = document.getElementById('slideshow-slide2-text').value || config.infoDisplay.text.content.slide2;
     config.infoDisplay.text.content.slide3 = document.getElementById('slideshow-slide3-text').value || config.infoDisplay.text.content.slide3;
     
+    // Update slideshow position in config
+    const posX = parseFloat(document.getElementById('slideshow-position-x').value);
+    const posY = parseFloat(document.getElementById('slideshow-position-y').value);
+    const posZ = parseFloat(document.getElementById('slideshow-position-z').value);
+    
+    if (!isNaN(posX) && !isNaN(posY) && !isNaN(posZ)) {
+      config.infoDisplay.position = `${posX} ${posY} ${posZ}`;
+    }
+    
+    // Update slideshow rotation in config
+    const rotX = parseFloat(document.getElementById('slideshow-rotation-x').value);
+    const rotY = parseFloat(document.getElementById('slideshow-rotation-y').value);
+    const rotZ = parseFloat(document.getElementById('slideshow-rotation-z').value);
+    
+    if (!isNaN(rotX) && !isNaN(rotY) && !isNaN(rotZ)) {
+      config.infoDisplay.rotation = `${rotX} ${rotY} ${rotZ}`;
+    }
+    
     console.log('Slideshow settings updated from form values');
     
     // Apply changes to the scene immediately
@@ -2974,6 +3335,19 @@ class ModelEditor {
     if (image3 && museumConfig.assets?.images?.image3) {
       image3.src = museumConfig.assets.images.image3;
       console.log('✅ Image3 updated:', museumConfig.assets.images.image3);
+    }
+    
+    // Update slideshow position and rotation in the scene
+    const infoDisplay = document.querySelector('#info-display');
+    if (infoDisplay) {
+      if (museumConfig.infoDisplay?.position) {
+        infoDisplay.setAttribute('position', museumConfig.infoDisplay.position);
+        console.log('✅ Slideshow position updated:', museumConfig.infoDisplay.position);
+      }
+      if (museumConfig.infoDisplay?.rotation) {
+        infoDisplay.setAttribute('rotation', museumConfig.infoDisplay.rotation);
+        console.log('✅ Slideshow rotation updated:', museumConfig.infoDisplay.rotation);
+      }
     }
     
     // Update text content in the scene
@@ -3011,12 +3385,53 @@ class ModelEditor {
     this.forceUpdateEnvironmentFromForm();
     console.log('Environment form values applied to config');
 
+    // Download as file
+    this.downloadConfiguration();
+  }
+
+  saveAsTemplateDefault() {
+    try {
+      // Get current template name from URL
+      const template = museumProject.getTemplateFromURL();
+      if (!template) {
+        museumProject.showNotification('Cannot determine template name from URL', 'error');
+        return;
+      }
+
+      // Send the updated config to the server
+      fetch('/save-template', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          template: template,
+          config: museumConfig
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          museumProject.showNotification(`Template "${template}" updated successfully!`, 'success');
+        } else {
+          museumProject.showNotification('Error saving template: ' + data.error, 'error');
+        }
+      })
+      .catch(error => {
+        museumProject.showNotification('Error saving template: ' + error.message, 'error');
+      });
+    } catch (error) {
+      museumProject.showNotification('Error saving template: ' + error.message, 'error');
+    }
+  }
+
+  downloadConfiguration() {
     // Prompt user for custom filename
     const defaultName = 'museum-config.json';
     const customName = prompt('Enter filename for the configuration:', defaultName);
     
     if (!customName) {
-      this.showNotification('Save cancelled', 'info');
+      museumProject.showNotification('Save cancelled', 'info');
       return;
     }
     
@@ -3036,9 +3451,9 @@ class ModelEditor {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      this.showNotification(`Configuration saved as ${filename}`, 'success');
+      museumProject.showNotification(`Configuration saved as ${filename}`, 'success');
     } catch (error) {
-      this.showNotification('Error saving configuration: ' + error.message, 'error');
+      museumProject.showNotification('Error saving configuration: ' + error.message, 'error');
     }
   }
 
@@ -3053,6 +3468,14 @@ class ModelEditor {
       .then(response => response.json())
       .then(config => {
         museumConfig = config;
+        
+        // Ensure there's always a default template
+        if (!museumConfig.template) {
+          museumConfig.template = {
+            id: 'outdoor-exploration',
+            name: 'Outdoor Exploration'
+          };
+        }
         
         // Completely clear the scene of all exhibits
         const scene = document.querySelector('a-scene');
@@ -3085,10 +3508,18 @@ class ModelEditor {
         document.getElementById('model-properties').style.display = 'none';
         this.currentModel = null;
         
+        // Load walls and ceilings from config
+        this.loadWallsAndCeilingsFromConfig();
+        
         // Rebuild scene from Model Editor fields after a delay to ensure everything is loaded
         setTimeout(() => {
           this.rebuildSceneFromEditorFields();
         }, 1000);
+        
+        // Update template display after config reload
+        if (typeof this.updateCurrentTemplateDisplay === 'function') {
+          this.updateCurrentTemplateDisplay();
+        }
         
         this.showNotification('Configuration reloaded from server', 'success');
       })
@@ -3136,7 +3567,7 @@ class ModelEditor {
         newModel.setAttribute('shadow', `cast: ${exhibit.model.castShadow}; receive: true`);
         
         // Add label to the new model (respect current label visibility)
-        if (this.labelsVisible !== false) {
+        if (this.labelsVisible === true) {
           this.addModelLabel(newModel, exhibit.name || exhibit.id);
         }
         
@@ -3247,6 +3678,9 @@ class ModelEditor {
   }
 
   generateStandaloneHTML() {
+    // Re-enable gaze cursor for exported scenes
+    this.enableGazeCursorForExport();
+    
     // Generate a complete HTML file with the 3D scene
     const config = museumConfig;
     
@@ -3869,6 +4303,9 @@ class ModelEditor {
             static-body
         ></a-box>
         
+        <!-- Walls and Ceilings -->
+        ${this.generateWallsAndCeilingsHTML(config)}
+        
         <!-- Exhibits -->
         ${this.generateExhibitsHTML(config)}
         
@@ -4028,6 +4465,80 @@ class ModelEditor {
     return assetsHTML;
   }
 
+  generateWallsAndCeilingsHTML(config) {
+    let wallsAndCeilingsHTML = '';
+    
+    // Generate walls
+    if (config.walls && Array.isArray(config.walls)) {
+      config.walls.forEach(wall => {
+        const tilingX = wall.tilingX || 1;
+        const tilingY = wall.tilingY || 1;
+        const brightness = wall.brightness || 1;
+        const color = wall.color || '#cccccc';
+        const renderOrder = wall.renderOrder || -1;
+        
+        let materialProps = '';
+        if (wall.texture) {
+          const opacity = wall.transparent ? 0.3 : brightness;
+          materialProps = `src: ${wall.texture}; side: double; repeat: ${tilingX} ${tilingY}; opacity: ${opacity}; depthTest: true; depthWrite: true; transparent: ${wall.transparent || false}`;
+        } else {
+          const opacity = wall.transparent ? 0.3 : 1;
+          materialProps = `color: ${color}; side: double; depthTest: true; depthWrite: true; transparent: ${wall.transparent || false}; opacity: ${opacity}`;
+        }
+        
+        wallsAndCeilingsHTML += `
+        <a-plane
+            id="wall-${wall.id}"
+            position="${wall.position.x} ${wall.position.y} ${wall.position.z}"
+            rotation="${wall.rotation.x} ${wall.rotation.y} ${wall.rotation.z}"
+            width="${wall.width}"
+            height="${wall.height}"
+            geometry="primitive: plane; width: ${wall.width}; height: ${wall.height}"
+            material="${materialProps}"
+            visible="${wall.visible}"
+            render-order="${renderOrder}"
+            class="wall-element"
+        ></a-plane>`;
+      });
+    }
+    
+    // Generate ceilings
+    if (config.ceilings && Array.isArray(config.ceilings)) {
+      config.ceilings.forEach(ceiling => {
+        const tilingX = ceiling.tilingX || 1;
+        const tilingY = ceiling.tilingY || 1;
+        const brightness = ceiling.brightness || 1;
+        const color = ceiling.color || '#ffffff';
+        const renderOrder = ceiling.renderOrder || -1;
+        
+        let materialProps = '';
+        if (ceiling.texture) {
+          const opacity = ceiling.transparent ? 0.3 : brightness;
+          materialProps = `src: ${ceiling.texture}; side: double; repeat: ${tilingX} ${tilingY}; opacity: ${opacity}; depthTest: true; depthWrite: true; transparent: ${ceiling.transparent || false}`;
+        } else {
+          const opacity = ceiling.transparent ? 0.3 : 1;
+          materialProps = `color: ${color}; side: double; depthTest: true; depthWrite: true; transparent: ${ceiling.transparent || false}; opacity: ${opacity}`;
+        }
+        
+        wallsAndCeilingsHTML += `
+        <a-plane
+            id="ceiling-${ceiling.id}"
+            position="${ceiling.position.x} ${ceiling.position.y} ${ceiling.position.z}"
+            rotation="${ceiling.rotation.x} ${ceiling.rotation.y} ${ceiling.rotation.z}"
+            width="${ceiling.width}"
+            height="${ceiling.height}"
+            geometry="primitive: plane; width: ${ceiling.width}; height: ${ceiling.height}"
+            material="${materialProps}"
+            visible="${ceiling.visible}"
+            render-order="${renderOrder}"
+            class="ceiling-element"
+        ></a-plane>`;
+      });
+    }
+    
+    return wallsAndCeilingsHTML;
+  }
+
   generateExhibitsHTML(config) {
     let exhibitsHTML = '';
     
@@ -4090,7 +4601,7 @@ class ModelEditor {
             </a-entity>
             
             <!-- Model Label -->
-            <a-entity id="${modelId}-label-container" position="0 3 0">
+            <a-entity id="${modelId}-label-container" position="0 3 0" visible="false">
                 <a-text value="${exhibit.name || 'Exhibit'}" 
                         align="center" 
                         color="white" 
@@ -4380,137 +4891,8 @@ class ModelEditor {
     publicJS = publicJS.replace(/\/\/ Initialize editor[\s\S]*?^}/gm, '');
     publicJS = publicJS.replace(/\/\/ Editor initialization[\s\S]*?^}/gm, '');
     
-    // Keep only the essential museum functionality
-    const essentialCode = `
-// Public Museum Scene - Viewer Only
-let museumConfig = {};
-
-class MuseumProject {
-  constructor(config) {
-    this.config = config;
-    this.setupEventListeners();
-  }
-
-  createAssets() {
-    // Asset creation logic
-    console.log('Creating museum assets...');
-    const assets = document.querySelector('a-assets');
-    if (!assets) return;
-
-    // Create image assets
-    if (this.config.images) {
-      Object.entries(this.config.images).forEach(([id, src]) => {
-        if (src && src.trim() !== '') {
-          const img = document.createElement('a-asset-item');
-          img.setAttribute('id', id);
-          img.setAttribute('src', src);
-          img.setAttribute('data-asset-type', 'image');
-          assets.appendChild(img);
-        }
-      });
-    }
-
-    // Create 3D model assets
-    if (this.config.exhibits) {
-      this.config.exhibits.forEach(exhibit => {
-        if (exhibit.model && exhibit.model.src && exhibit.model.src.trim() !== '') {
-          const model = document.createElement('a-asset-item');
-          model.setAttribute('id', exhibit.model.id);
-          model.setAttribute('src', exhibit.model.src);
-          model.setAttribute('data-asset-type', '3d-model');
-          assets.appendChild(model);
-        }
-      });
-    }
-
-    // Create audio assets
-    if (this.config.audio) {
-      Object.entries(this.config.audio).forEach(([id, src]) => {
-        if (src && src.trim() !== '') {
-          const audio = document.createElement('a-asset-item');
-          audio.setAttribute('id', id);
-          audio.setAttribute('src', src);
-          audio.setAttribute('data-asset-type', 'audio');
-          assets.appendChild(audio);
-        }
-      });
-    }
-  }
-
-  createExhibits() {
-    console.log('Creating museum exhibits...');
-    if (!this.config.exhibits) return;
-
-    this.config.exhibits.forEach((exhibit, index) => {
-      this.createExhibit(exhibit, index);
-    });
-  }
-
-  createExhibit(exhibit, index) {
-    const scene = document.querySelector('a-scene');
-    if (!scene) return;
-
-    // Create exhibit container
-    const exhibitEntity = document.createElement('a-entity');
-    exhibitEntity.setAttribute('id', exhibit.id);
-    exhibitEntity.setAttribute('position', exhibit.position);
-    exhibitEntity.setAttribute('data-exhibit-name', exhibit.name);
-
-    // Create 3D model
-    if (exhibit.model) {
-      const modelEntity = document.createElement('a-entity');
-      modelEntity.setAttribute('id', exhibit.model.id);
-      modelEntity.setAttribute('position', exhibit.model.position);
-      modelEntity.setAttribute('scale', exhibit.model.scale);
-      modelEntity.setAttribute('rotation', exhibit.model.rotation);
-      modelEntity.setAttribute('gltf-model', '#' + exhibit.model.id);
-      modelEntity.setAttribute('data-model-type', 'exhibit-model');
-      modelEntity.setAttribute('data-model-name', exhibit.name);
-      
-      if (exhibit.model.castShadow) {
-        modelEntity.setAttribute('shadow', 'cast: true; receive: false');
-      }
-
-      exhibitEntity.appendChild(modelEntity);
-    }
-
-    // Create hotspot
-    if (exhibit.hotspot) {
-      const hotspotEntity = document.createElement('a-entity');
-      hotspotEntity.setAttribute('id', exhibit.hotspot.id);
-      hotspotEntity.setAttribute('position', exhibit.hotspot.position);
-      hotspotEntity.setAttribute('geometry', 'primitive: cylinder; radius: 0.5; height: 0.1');
-      hotspotEntity.setAttribute('material', 'color: #ff6b6b; opacity: 0.8');
-      hotspotEntity.setAttribute('class', 'clickable');
-      hotspotEntity.setAttribute('data-hotspot-label', exhibit.hotspot.label);
-      hotspotEntity.setAttribute('data-hotspot-info', exhibit.hotspot.info);
-
-      exhibitEntity.appendChild(hotspotEntity);
-    }
-
-    scene.appendChild(exhibitEntity);
-  }
-
-  setupEventListeners() {
-    // Add basic event listeners for museum interaction
-    document.addEventListener('click', (event) => {
-      if (event.target.classList.contains('clickable')) {
-        const label = event.target.getAttribute('data-hotspot-label');
-        const info = event.target.getAttribute('data-hotspot-info');
-        if (label) {
-          alert(label + '\\n\\n' + (info || 'Click to learn more!'));
-        }
-      }
-    });
-  }
-}
-
-// Initialize the museum when the page loads
-// Note: Museum initialization is handled in the main DOMContentLoaded event above
-// This duplicate initialization was causing config overwrites
-`;
-
-    return essentialCode;
+    // For stability, just return the cleaned JS without embedding new template literals
+    return publicJS;
   }
 
   createPublicCSS(originalCSS) {
@@ -4779,17 +5161,51 @@ Created: ${new Date().toLocaleString()}
   }
 
   clearCurrentScene() {
-    // Clear all exhibits
     const scene = document.querySelector('a-scene');
+    
+    // Clear all exhibits
     const exhibits = scene.querySelectorAll('[id*="-exhibit"]');
     console.log(`Clearing ${exhibits.length} existing exhibits`);
     exhibits.forEach(exhibit => exhibit.remove());
     
+    // Clear info display
+    const infoDisplay = scene.querySelector('#info-display');
+    if (infoDisplay) {
+      console.log('Clearing info display');
+      infoDisplay.remove();
+    }
+    
+    // Clear environment elements (ground, sky, lights)
+    const ground = scene.querySelector('a-plane.ground');
+    if (ground) {
+      console.log('Clearing ground');
+      ground.remove();
+    }
+    
+    const sky = scene.querySelector('a-sky');
+    if (sky) {
+      console.log('Clearing sky');
+      sky.remove();
+    }
+    
+    // Clear lights (but keep the default ones)
+    const customLights = scene.querySelectorAll('a-entity[light]');
+    customLights.forEach(light => {
+      if (light.id && (light.id.includes('ambient') || light.id.includes('directional'))) {
+        console.log(`Clearing custom light: ${light.id}`);
+        light.remove();
+      }
+    });
+    
     // Clear all model assets
     const assets = document.querySelector('a-assets');
-    const existingAssets = assets.querySelectorAll('a-asset-item[data-asset-type="3d-model"]');
-    console.log(`Clearing ${existingAssets.length} existing model assets`);
-    existingAssets.forEach(asset => asset.remove());
+    if (assets) {
+      const existingAssets = assets.querySelectorAll('a-asset-item[data-asset-type="3d-model"]');
+      console.log(`Clearing ${existingAssets.length} existing model assets`);
+      existingAssets.forEach(asset => asset.remove());
+    }
+    
+    console.log('Scene cleared completely');
   }
 
   addNewModelAssets(config) {
@@ -4886,6 +5302,9 @@ Created: ${new Date().toLocaleString()}
           this.refreshInterface(); // Use refresh method
           document.getElementById('model-properties').style.display = 'none';
           this.currentModel = null;
+          
+          // Load walls and ceilings from config
+          this.loadWallsAndCeilingsFromConfig();
           
           // Rebuild scene from Model Editor fields after a delay to ensure everything is loaded
           setTimeout(() => {
@@ -5196,6 +5615,20 @@ Created: ${new Date().toLocaleString()}
     console.log('Form values cleared and real-time updates temporarily disabled');
   }
 
+  updateCurrentTemplateDisplay() {
+    const nameEl = document.getElementById('current-template-name');
+    const descEl = document.getElementById('current-template-description');
+    
+    if (nameEl && descEl) {
+      const template = museumConfig?.template || { name: 'Outdoor Exploration', description: 'Open-air farm/field with exhibits and hotspots. Current default experience.' };
+      
+      nameEl.textContent = template.name || 'Outdoor Exploration';
+      descEl.textContent = template.description || 'Open-air farm/field with exhibits and hotspots. Current default experience.';
+      
+      console.log('Updated template display:', template.name);
+    }
+  }
+
   showNotification(message, type = 'success') {
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
@@ -5263,6 +5696,40 @@ Created: ${new Date().toLocaleString()}
         console.log('  Loaded text content:', { slide1, slide2, slide3 });
       } else {
         console.log('  No text content found in config');
+      }
+      
+      // Load slideshow position
+      if (config.infoDisplay?.position) {
+        const positionParts = config.infoDisplay.position.split(' ');
+        if (positionParts.length === 3) {
+          document.getElementById('slideshow-position-x').value = positionParts[0];
+          document.getElementById('slideshow-position-y').value = positionParts[1];
+          document.getElementById('slideshow-position-z').value = positionParts[2];
+          console.log('  Loaded slideshow position:', config.infoDisplay.position);
+        }
+      } else {
+        // Set default position if none exists
+        document.getElementById('slideshow-position-x').value = '0';
+        document.getElementById('slideshow-position-y').value = '0';
+        document.getElementById('slideshow-position-z').value = '0';
+        console.log('  Set default slideshow position: 0 0 0');
+      }
+      
+      // Load slideshow rotation
+      if (config.infoDisplay?.rotation) {
+        const rotationParts = config.infoDisplay.rotation.split(' ');
+        if (rotationParts.length === 3) {
+          document.getElementById('slideshow-rotation-x').value = rotationParts[0];
+          document.getElementById('slideshow-rotation-y').value = rotationParts[1];
+          document.getElementById('slideshow-rotation-z').value = rotationParts[2];
+          console.log('  Loaded slideshow rotation:', config.infoDisplay.rotation);
+        }
+      } else {
+        // Set default rotation if none exists
+        document.getElementById('slideshow-rotation-x').value = '0';
+        document.getElementById('slideshow-rotation-y').value = '0';
+        document.getElementById('slideshow-rotation-z').value = '0';
+        console.log('  Set default slideshow rotation: 0 0 0');
       }
       
       // Re-enable real-time updates after a delay
@@ -6079,6 +6546,1022 @@ Created: ${new Date().toLocaleString()}
       }
     }
   }
+
+  // Walls and Ceilings Management
+  initWallsAndCeilings() {
+    this.walls = [];
+    this.ceilings = [];
+    this.setupWallsAndCeilingsEventListeners();
+    this.loadWallsAndCeilingsFromConfig();
+  }
+
+  setupWallsAndCeilingsEventListeners() {
+    // Add wall button
+    document.getElementById('add-wall')?.addEventListener('click', () => {
+      this.addWall();
+    });
+
+    // Add ceiling button
+    document.getElementById('add-ceiling')?.addEventListener('click', () => {
+      this.addCeiling();
+    });
+
+    // Update walls and ceilings button
+    document.getElementById('update-walls-ceilings')?.addEventListener('click', () => {
+      this.updateWallsAndCeilings();
+    });
+
+    // Reset walls and ceilings button
+    document.getElementById('reset-walls-ceilings')?.addEventListener('click', () => {
+      this.resetWallsAndCeilings();
+    });
+
+    // Toggle gizmos button
+    document.getElementById('toggle-gizmos')?.addEventListener('click', () => {
+      this.toggleGizmos();
+    });
+  }
+
+  addWall() {
+    const wallId = `wall_${Date.now()}`;
+    const wall = {
+      id: wallId,
+      name: `Wall ${this.walls.length + 1}`,
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      width: 10,
+      height: 3,
+      texture: '',
+      tilingX: 1,
+      tilingY: 1,
+      brightness: 1,
+      color: '#cccccc',
+      visible: true
+    };
+    
+    this.walls.push(wall);
+    this.renderWallsList();
+    this.createWallInScene(wall);
+  }
+
+  addCeiling() {
+    const ceilingId = `ceiling_${Date.now()}`;
+    const ceiling = {
+      id: ceilingId,
+      name: `Ceiling ${this.ceilings.length + 1}`,
+      position: { x: 0, y: 3, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      width: 10,
+      height: 10,
+      texture: '',
+      tilingX: 1,
+      tilingY: 1,
+      brightness: 1,
+      color: '#ffffff',
+      visible: true
+    };
+    
+    this.ceilings.push(ceiling);
+    this.renderCeilingsList();
+    this.createCeilingInScene(ceiling);
+  }
+
+  renderWallsList() {
+    const wallsList = document.getElementById('walls-list');
+    const wallCount = document.getElementById('wall-count');
+    
+    if (!wallsList || !wallCount) return;
+
+    wallCount.textContent = `${this.walls.length} walls`;
+    wallsList.innerHTML = '';
+
+    this.walls.forEach((wall, index) => {
+      const wallItem = document.createElement('div');
+      wallItem.className = 'wall-item';
+      wallItem.innerHTML = `
+        <div class="wall-item-header">
+          <div class="wall-item-title">${wall.name}</div>
+          <div class="wall-item-controls">
+            <button class="duplicate-btn" data-wall-id="${wall.id}">Duplicate</button>
+            <button class="delete-btn" data-wall-id="${wall.id}">Delete</button>
+          </div>
+        </div>
+        <div class="wall-properties">
+          <div class="wall-property">
+            <label>Name:</label>
+            <input type="text" data-wall-id="${wall.id}" data-property="name" value="${wall.name}">
+          </div>
+          <div class="wall-property">
+            <label>Position X:</label>
+            <input type="number" data-wall-id="${wall.id}" data-property="position.x" value="${wall.position.x}" step="0.1">
+          </div>
+          <div class="wall-property">
+            <label>Position Y:</label>
+            <input type="number" data-wall-id="${wall.id}" data-property="position.y" value="${wall.position.y}" step="0.1">
+          </div>
+          <div class="wall-property">
+            <label>Position Z:</label>
+            <input type="number" data-wall-id="${wall.id}" data-property="position.z" value="${wall.position.z}" step="0.1">
+          </div>
+          <div class="wall-property">
+            <label>Render Order:</label>
+            <input type="number" data-wall-id="${wall.id}" data-property="renderOrder" value="${wall.renderOrder || 0}" step="1" title="Higher values render in front">
+          </div>
+          <div class="wall-property">
+            <label>Transparent:</label>
+            <input type="checkbox" data-wall-id="${wall.id}" data-property="transparent" ${wall.transparent ? 'checked' : ''} title="Make wall semi-transparent to avoid occlusion">
+          </div>
+          <div class="wall-property">
+            <label>Rotation X:</label>
+            <input type="number" data-wall-id="${wall.id}" data-property="rotation.x" value="${wall.rotation.x}" step="1">
+          </div>
+          <div class="wall-property">
+            <label>Rotation Y:</label>
+            <input type="number" data-wall-id="${wall.id}" data-property="rotation.y" value="${wall.rotation.y}" step="1">
+          </div>
+          <div class="wall-property">
+            <label>Rotation Z:</label>
+            <input type="number" data-wall-id="${wall.id}" data-property="rotation.z" value="${wall.rotation.z}" step="1">
+          </div>
+          <div class="wall-property">
+            <label>Width:</label>
+            <input type="number" data-wall-id="${wall.id}" data-property="width" value="${wall.width}" step="0.1" min="0.1">
+          </div>
+          <div class="wall-property">
+            <label>Height:</label>
+            <input type="number" data-wall-id="${wall.id}" data-property="height" value="${wall.height}" step="0.1" min="0.1">
+          </div>
+          <div class="wall-property full-width">
+            <label>Texture URL:</label>
+            <input type="url" data-wall-id="${wall.id}" data-property="texture" value="${wall.texture}" placeholder="https://...">
+            <div class="texture-preview" data-wall-id="${wall.id}">
+              ${wall.texture ? `<img src="${wall.texture}" alt="Texture preview">` : 'No texture'}
+            </div>
+          </div>
+          <div class="wall-property">
+            <label>Texture Tiling X:</label>
+            <input type="number" data-wall-id="${wall.id}" data-property="tilingX" value="${wall.tilingX || 1}" step="0.1" min="0.1" max="10">
+          </div>
+          <div class="wall-property">
+            <label>Texture Tiling Y:</label>
+            <input type="number" data-wall-id="${wall.id}" data-property="tilingY" value="${wall.tilingY || 1}" step="0.1" min="0.1" max="10">
+          </div>
+          <div class="wall-property">
+            <label>Texture Brightness:</label>
+            <input type="range" data-wall-id="${wall.id}" data-property="brightness" value="${wall.brightness || 1}" min="0" max="2" step="0.1">
+            <span class="brightness-value">${wall.brightness || 1}</span>
+          </div>
+          <div class="wall-property">
+            <label>Wall Color:</label>
+            <input type="color" data-wall-id="${wall.id}" data-property="color" value="${wall.color || '#cccccc'}" style="width: 100%; height: 30px; border: none; border-radius: 4px; cursor: pointer;">
+          </div>
+          <div class="wall-property">
+            <label>
+              <input type="checkbox" data-wall-id="${wall.id}" data-property="visible" ${wall.visible ? 'checked' : ''}>
+              Visible
+            </label>
+          </div>
+        </div>
+      `;
+      wallsList.appendChild(wallItem);
+    });
+
+    // Add event listeners for wall controls
+    wallsList.querySelectorAll('.duplicate-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const wallId = e.target.dataset.wallId;
+        this.duplicateWall(wallId);
+      });
+    });
+
+    wallsList.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const wallId = e.target.dataset.wallId;
+        this.deleteWall(wallId);
+      });
+    });
+
+    wallsList.querySelectorAll('input').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const wallId = e.target.dataset.wallId;
+        const property = e.target.dataset.property;
+        this.updateWallProperty(wallId, property, e.target.value);
+        
+        // Update brightness value display
+        if (property === 'brightness') {
+          const brightnessValue = wallsList.querySelector(`input[data-wall-id="${wallId}"][data-property="brightness"]`).nextElementSibling;
+          if (brightnessValue) {
+            brightnessValue.textContent = e.target.value;
+          }
+        }
+      });
+    });
+  }
+
+  renderCeilingsList() {
+    const ceilingsList = document.getElementById('ceilings-list');
+    const ceilingCount = document.getElementById('ceiling-count');
+    
+    if (!ceilingsList || !ceilingCount) return;
+
+    ceilingCount.textContent = `${this.ceilings.length} ceilings`;
+    ceilingsList.innerHTML = '';
+
+    this.ceilings.forEach((ceiling, index) => {
+      const ceilingItem = document.createElement('div');
+      ceilingItem.className = 'ceiling-item';
+      ceilingItem.innerHTML = `
+        <div class="ceiling-item-header">
+          <div class="ceiling-item-title">${ceiling.name}</div>
+          <div class="ceiling-item-controls">
+            <button class="duplicate-btn" data-ceiling-id="${ceiling.id}">Duplicate</button>
+            <button class="delete-btn" data-ceiling-id="${ceiling.id}">Delete</button>
+          </div>
+        </div>
+        <div class="ceiling-properties">
+          <div class="ceiling-property">
+            <label>Name:</label>
+            <input type="text" data-ceiling-id="${ceiling.id}" data-property="name" value="${ceiling.name}">
+          </div>
+          <div class="ceiling-property">
+            <label>Position X:</label>
+            <input type="number" data-ceiling-id="${ceiling.id}" data-property="position.x" value="${ceiling.position.x}" step="0.1">
+          </div>
+          <div class="ceiling-property">
+            <label>Position Y:</label>
+            <input type="number" data-ceiling-id="${ceiling.id}" data-property="position.y" value="${ceiling.position.y}" step="0.1">
+          </div>
+          <div class="ceiling-property">
+            <label>Position Z:</label>
+            <input type="number" data-ceiling-id="${ceiling.id}" data-property="position.z" value="${ceiling.position.z}" step="0.1">
+          </div>
+          <div class="ceiling-property">
+            <label>Render Order:</label>
+            <input type="number" data-ceiling-id="${ceiling.id}" data-property="renderOrder" value="${ceiling.renderOrder || 0}" step="1" title="Higher values render in front">
+          </div>
+          <div class="ceiling-property">
+            <label>Transparent:</label>
+            <input type="checkbox" data-ceiling-id="${ceiling.id}" data-property="transparent" ${ceiling.transparent ? 'checked' : ''} title="Make ceiling semi-transparent to avoid occlusion">
+          </div>
+          <div class="ceiling-property">
+            <label>Rotation X:</label>
+            <input type="number" data-ceiling-id="${ceiling.id}" data-property="rotation.x" value="${ceiling.rotation.x}" step="1">
+          </div>
+          <div class="ceiling-property">
+            <label>Rotation Y:</label>
+            <input type="number" data-ceiling-id="${ceiling.id}" data-property="rotation.y" value="${ceiling.rotation.y}" step="1">
+          </div>
+          <div class="ceiling-property">
+            <label>Rotation Z:</label>
+            <input type="number" data-ceiling-id="${ceiling.id}" data-property="rotation.z" value="${ceiling.rotation.z}" step="1">
+          </div>
+          <div class="ceiling-property">
+            <label>Width:</label>
+            <input type="number" data-ceiling-id="${ceiling.id}" data-property="width" value="${ceiling.width}" step="0.1" min="0.1">
+          </div>
+          <div class="ceiling-property">
+            <label>Height:</label>
+            <input type="number" data-ceiling-id="${ceiling.id}" data-property="height" value="${ceiling.height}" step="0.1" min="0.1">
+          </div>
+          <div class="ceiling-property full-width">
+            <label>Texture URL:</label>
+            <input type="url" data-ceiling-id="${ceiling.id}" data-property="texture" value="${ceiling.texture}" placeholder="https://...">
+            <div class="texture-preview" data-ceiling-id="${ceiling.id}">
+              ${ceiling.texture ? `<img src="${ceiling.texture}" alt="Texture preview">` : 'No texture'}
+            </div>
+          </div>
+          <div class="ceiling-property">
+            <label>Texture Tiling X:</label>
+            <input type="number" data-ceiling-id="${ceiling.id}" data-property="tilingX" value="${ceiling.tilingX || 1}" step="0.1" min="0.1" max="10">
+          </div>
+          <div class="ceiling-property">
+            <label>Texture Tiling Y:</label>
+            <input type="number" data-ceiling-id="${ceiling.id}" data-property="tilingY" value="${ceiling.tilingY || 1}" step="0.1" min="0.1" max="10">
+          </div>
+          <div class="ceiling-property">
+            <label>Texture Brightness:</label>
+            <input type="range" data-ceiling-id="${ceiling.id}" data-property="brightness" value="${ceiling.brightness || 1}" min="0" max="2" step="0.1">
+            <span class="brightness-value">${ceiling.brightness || 1}</span>
+          </div>
+          <div class="ceiling-property">
+            <label>Ceiling Color:</label>
+            <input type="color" data-ceiling-id="${ceiling.id}" data-property="color" value="${ceiling.color || '#ffffff'}" style="width: 100%; height: 30px; border: none; border-radius: 4px; cursor: pointer;">
+          </div>
+          <div class="ceiling-property">
+            <label>
+              <input type="checkbox" data-ceiling-id="${ceiling.id}" data-property="visible" ${ceiling.visible ? 'checked' : ''}>
+              Visible
+            </label>
+          </div>
+        </div>
+      `;
+      ceilingsList.appendChild(ceilingItem);
+    });
+
+    // Add event listeners for ceiling controls
+    ceilingsList.querySelectorAll('.duplicate-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const ceilingId = e.target.dataset.ceilingId;
+        this.duplicateCeiling(ceilingId);
+      });
+    });
+
+    ceilingsList.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const ceilingId = e.target.dataset.ceilingId;
+        this.deleteCeiling(ceilingId);
+      });
+    });
+
+    ceilingsList.querySelectorAll('input').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const ceilingId = e.target.dataset.ceilingId;
+        const property = e.target.dataset.property;
+        this.updateCeilingProperty(ceilingId, property, e.target.value);
+        
+        // Update brightness value display
+        if (property === 'brightness') {
+          const brightnessValue = ceilingsList.querySelector(`input[data-ceiling-id="${ceilingId}"][data-property="brightness"]`).nextElementSibling;
+          if (brightnessValue) {
+            brightnessValue.textContent = e.target.value;
+          }
+        }
+      });
+    });
+  }
+
+  updateWallProperty(wallId, property, value) {
+    const wall = this.walls.find(w => w.id === wallId);
+    if (!wall) return;
+
+    if (property.includes('.')) {
+      const [parent, child] = property.split('.');
+      wall[parent][child] = property.includes('position') || property.includes('rotation') ? 
+        parseFloat(value) || 0 : value;
+    } else if (property === 'visible') {
+      wall[property] = value === 'on' || value === true;
+    } else if (property === 'width' || property === 'height') {
+      wall[property] = parseFloat(value) || 0.1;
+    } else if (property === 'tilingX' || property === 'tilingY') {
+      wall[property] = parseFloat(value) || 1;
+    } else if (property === 'brightness') {
+      wall[property] = parseFloat(value) || 1;
+    } else if (property === 'color') {
+      wall[property] = value;
+    } else if (property === 'renderOrder') {
+      wall[property] = parseInt(value) || 0;
+    } else if (property === 'transparent') {
+      wall[property] = value === 'on' || value === true;
+    } else {
+      wall[property] = value;
+    }
+
+    this.updateWallInScene(wall);
+  }
+
+  updateCeilingProperty(ceilingId, property, value) {
+    const ceiling = this.ceilings.find(c => c.id === ceilingId);
+    if (!ceiling) return;
+
+    if (property.includes('.')) {
+      const [parent, child] = property.split('.');
+      ceiling[parent][child] = property.includes('position') || property.includes('rotation') ? 
+        parseFloat(value) || 0 : value;
+    } else if (property === 'visible') {
+      ceiling[property] = value === 'on' || value === true;
+    } else if (property === 'width' || property === 'height') {
+      ceiling[property] = parseFloat(value) || 0.1;
+    } else if (property === 'tilingX' || property === 'tilingY') {
+      ceiling[property] = parseFloat(value) || 1;
+    } else if (property === 'brightness') {
+      ceiling[property] = parseFloat(value) || 1;
+    } else if (property === 'color') {
+      ceiling[property] = value;
+    } else if (property === 'renderOrder') {
+      ceiling[property] = parseInt(value) || 0;
+    } else if (property === 'transparent') {
+      ceiling[property] = value === 'on' || value === true;
+    } else {
+      ceiling[property] = value;
+    }
+
+    this.updateCeilingInScene(ceiling);
+  }
+
+  duplicateWall(wallId) {
+    const wall = this.walls.find(w => w.id === wallId);
+    if (!wall) return;
+
+    const newWall = {
+      ...wall,
+      id: `wall_${Date.now()}`,
+      name: `${wall.name} Copy`,
+      position: { ...wall.position, x: wall.position.x + 2 }
+    };
+
+    this.walls.push(newWall);
+    this.renderWallsList();
+    this.createWallInScene(newWall);
+  }
+
+  duplicateCeiling(ceilingId) {
+    const ceiling = this.ceilings.find(c => c.id === ceilingId);
+    if (!ceiling) return;
+
+    const newCeiling = {
+      ...ceiling,
+      id: `ceiling_${Date.now()}`,
+      name: `${ceiling.name} Copy`,
+      position: { ...ceiling.position, x: ceiling.position.x + 2 }
+    };
+
+    this.ceilings.push(newCeiling);
+    this.renderCeilingsList();
+    this.createCeilingInScene(newCeiling);
+  }
+
+  deleteWall(wallId) {
+    this.walls = this.walls.filter(w => w.id !== wallId);
+    this.renderWallsList();
+    this.removeWallFromScene(wallId);
+  }
+
+  deleteCeiling(ceilingId) {
+    this.ceilings = this.ceilings.filter(c => c.id !== ceilingId);
+    this.renderCeilingsList();
+    this.removeCeilingFromScene(ceilingId);
+  }
+
+  createWallInScene(wall) {
+    const scene = document.querySelector('a-scene');
+    if (!scene) return;
+
+    const wallEntity = document.createElement('a-plane');
+    wallEntity.setAttribute('id', `wall-${wall.id}`);
+    wallEntity.setAttribute('position', `${wall.position.x} ${wall.position.y} ${wall.position.z}`);
+    wallEntity.setAttribute('rotation', `${wall.rotation.x} ${wall.rotation.y} ${wall.rotation.z}`);
+    wallEntity.setAttribute('width', wall.width);
+    wallEntity.setAttribute('height', wall.height);
+    wallEntity.setAttribute('geometry', `primitive: plane; width: ${wall.width}; height: ${wall.height}`);
+    const tilingX = wall.tilingX || 1;
+    const tilingY = wall.tilingY || 1;
+    const brightness = wall.brightness || 1;
+    const color = wall.color || '#cccccc';
+    
+    if (wall.texture) {
+      const opacity = wall.transparent ? 0.3 : brightness;
+      this.setMaterialWhenAssetReady(wallEntity, wall.texture, `side: double; repeat: ${tilingX} ${tilingY}; opacity: ${opacity}; depthTest: true; depthWrite: true; transparent: ${wall.transparent || false}`);
+    } else {
+      const opacity = wall.transparent ? 0.3 : 1;
+      wallEntity.setAttribute('material', `color: ${color}; side: double; depthTest: true; depthWrite: true; transparent: ${wall.transparent || false}; opacity: ${opacity}`);
+    }
+    wallEntity.setAttribute('visible', wall.visible);
+    if (wall.renderOrder !== undefined) {
+      wallEntity.setAttribute('render-order', wall.renderOrder);
+    } else {
+      wallEntity.setAttribute('render-order', -1); // Default to render behind other objects
+    }
+    wallEntity.classList.add('wall-element');
+
+    // Add manipulation gizmo
+    this.createWallGizmo(wall);
+
+    scene.appendChild(wallEntity);
+  }
+
+  createCeilingInScene(ceiling) {
+    const scene = document.querySelector('a-scene');
+    if (!scene) return;
+
+    const ceilingEntity = document.createElement('a-plane');
+    ceilingEntity.setAttribute('id', `ceiling-${ceiling.id}`);
+    ceilingEntity.setAttribute('position', `${ceiling.position.x} ${ceiling.position.y} ${ceiling.position.z}`);
+    ceilingEntity.setAttribute('rotation', `${ceiling.rotation.x} ${ceiling.rotation.y} ${ceiling.rotation.z}`);
+    ceilingEntity.setAttribute('width', ceiling.width);
+    ceilingEntity.setAttribute('height', ceiling.height);
+    ceilingEntity.setAttribute('geometry', `primitive: plane; width: ${ceiling.width}; height: ${ceiling.height}`);
+    const tilingX = ceiling.tilingX || 1;
+    const tilingY = ceiling.tilingY || 1;
+    const brightness = ceiling.brightness || 1;
+    const color = ceiling.color || '#ffffff';
+    
+    if (ceiling.texture) {
+      const opacity = ceiling.transparent ? 0.3 : brightness;
+      this.setMaterialWhenAssetReady(ceilingEntity, ceiling.texture, `side: double; repeat: ${tilingX} ${tilingY}; opacity: ${opacity}; depthTest: true; depthWrite: true; transparent: ${ceiling.transparent || false}`);
+    } else {
+      const opacity = ceiling.transparent ? 0.3 : 1;
+      ceilingEntity.setAttribute('material', `color: ${color}; side: double; depthTest: true; depthWrite: true; transparent: ${ceiling.transparent || false}; opacity: ${opacity}`);
+    }
+    ceilingEntity.setAttribute('visible', ceiling.visible);
+    if (ceiling.renderOrder !== undefined) {
+      ceilingEntity.setAttribute('render-order', ceiling.renderOrder);
+    } else {
+      ceilingEntity.setAttribute('render-order', -1); // Default to render behind other objects
+    }
+    ceilingEntity.classList.add('ceiling-element');
+
+    // Add manipulation gizmo
+    this.createCeilingGizmo(ceiling);
+
+    scene.appendChild(ceilingEntity);
+  }
+
+  updateWallInScene(wall) {
+    const wallEntity = document.querySelector(`#wall-${wall.id}`);
+    if (!wallEntity) return;
+
+    wallEntity.setAttribute('position', `${wall.position.x} ${wall.position.y} ${wall.position.z}`);
+    wallEntity.setAttribute('rotation', `${wall.rotation.x} ${wall.rotation.y} ${wall.rotation.z}`);
+    wallEntity.setAttribute('width', wall.width);
+    wallEntity.setAttribute('height', wall.height);
+    const tilingX = wall.tilingX || 1;
+    const tilingY = wall.tilingY || 1;
+    const brightness = wall.brightness || 1;
+    const color = wall.color || '#cccccc';
+    
+    if (wall.texture) {
+      const opacity = wall.transparent ? 0.3 : brightness;
+      this.setMaterialWhenAssetReady(wallEntity, wall.texture, `side: double; repeat: ${tilingX} ${tilingY}; opacity: ${opacity}; depthTest: true; depthWrite: true; transparent: ${wall.transparent || false}`);
+    } else {
+      const opacity = wall.transparent ? 0.3 : 1;
+      wallEntity.setAttribute('material', `color: ${color}; side: double; depthTest: true; depthWrite: true; transparent: ${wall.transparent || false}; opacity: ${opacity}`);
+    }
+    wallEntity.setAttribute('visible', wall.visible);
+
+    // Update gizmo position
+    this.updateWallGizmo(wall);
+  }
+
+  updateCeilingInScene(ceiling) {
+    const ceilingEntity = document.querySelector(`#ceiling-${ceiling.id}`);
+    if (!ceilingEntity) return;
+
+    ceilingEntity.setAttribute('position', `${ceiling.position.x} ${ceiling.position.y} ${ceiling.position.z}`);
+    ceilingEntity.setAttribute('rotation', `${ceiling.rotation.x} ${ceiling.rotation.y} ${ceiling.rotation.z}`);
+    ceilingEntity.setAttribute('width', ceiling.width);
+    ceilingEntity.setAttribute('height', ceiling.height);
+    const tilingX = ceiling.tilingX || 1;
+    const tilingY = ceiling.tilingY || 1;
+    const brightness = ceiling.brightness || 1;
+    const color = ceiling.color || '#ffffff';
+    
+    if (ceiling.texture) {
+      const opacity = ceiling.transparent ? 0.3 : brightness;
+      this.setMaterialWhenAssetReady(ceilingEntity, ceiling.texture, `side: double; repeat: ${tilingX} ${tilingY}; opacity: ${opacity}; depthTest: true; depthWrite: true; transparent: ${ceiling.transparent || false}`);
+    } else {
+      const opacity = ceiling.transparent ? 0.3 : 1;
+      ceilingEntity.setAttribute('material', `color: ${color}; side: double; depthTest: true; depthWrite: true; transparent: ${ceiling.transparent || false}; opacity: ${opacity}`);
+    }
+    ceilingEntity.setAttribute('visible', ceiling.visible);
+
+    // Update gizmo position
+    this.updateCeilingGizmo(ceiling);
+  }
+
+  removeWallFromScene(wallId) {
+    const wallEntity = document.querySelector(`#wall-${wallId}`);
+    if (wallEntity) {
+      wallEntity.remove();
+    }
+    // Remove gizmo
+    const gizmo = document.querySelector(`#gizmo-wall-${wallId}`);
+    if (gizmo) {
+      gizmo.remove();
+    }
+  }
+
+  removeCeilingFromScene(ceilingId) {
+    const ceilingEntity = document.querySelector(`#ceiling-${ceilingId}`);
+    if (ceilingEntity) {
+      ceilingEntity.remove();
+    }
+    // Remove gizmo
+    const gizmo = document.querySelector(`#gizmo-ceiling-${ceilingId}`);
+    if (gizmo) {
+      gizmo.remove();
+    }
+  }
+
+  // Gizmo creation and manipulation functions
+  createWallGizmo(wall) {
+    const scene = document.querySelector('a-scene');
+    if (!scene) return;
+
+    // Remove existing gizmo if it exists
+    const existingGizmo = document.querySelector(`#gizmo-wall-${wall.id}`);
+    if (existingGizmo) {
+      existingGizmo.remove();
+    }
+
+    const gizmo = document.createElement('a-entity');
+    gizmo.setAttribute('id', `gizmo-wall-${wall.id}`);
+    gizmo.setAttribute('position', `${wall.position.x} ${wall.position.y} ${wall.position.z}`);
+    gizmo.classList.add('manipulation-gizmo');
+
+    // X+ axis arrow (red)
+    const xArrow = document.createElement('a-cone');
+    xArrow.setAttribute('position', '1 0 0');
+    xArrow.setAttribute('rotation', '0 0 -90');
+    xArrow.setAttribute('radius-bottom', '0.1');
+    xArrow.setAttribute('height', '0.5');
+    xArrow.setAttribute('material', 'color: #ff0000');
+    xArrow.setAttribute('data-axis', 'x+');
+    xArrow.setAttribute('data-wall-id', wall.id);
+    xArrow.classList.add('gizmo-arrow');
+    gizmo.appendChild(xArrow);
+
+    // X- axis arrow (dark red)
+    const xArrowNeg = document.createElement('a-cone');
+    xArrowNeg.setAttribute('position', '-1 0 0');
+    xArrowNeg.setAttribute('rotation', '0 0 90');
+    xArrowNeg.setAttribute('radius-bottom', '0.1');
+    xArrowNeg.setAttribute('height', '0.5');
+    xArrowNeg.setAttribute('material', 'color: #cc0000');
+    xArrowNeg.setAttribute('data-axis', 'x-');
+    xArrowNeg.setAttribute('data-wall-id', wall.id);
+    xArrowNeg.classList.add('gizmo-arrow');
+    gizmo.appendChild(xArrowNeg);
+
+    // Y+ axis arrow (green)
+    const yArrow = document.createElement('a-cone');
+    yArrow.setAttribute('position', '0 1 0');
+    yArrow.setAttribute('radius-bottom', '0.1');
+    yArrow.setAttribute('height', '0.5');
+    yArrow.setAttribute('material', 'color: #00ff00');
+    yArrow.setAttribute('data-axis', 'y+');
+    yArrow.setAttribute('data-wall-id', wall.id);
+    yArrow.classList.add('gizmo-arrow');
+    gizmo.appendChild(yArrow);
+
+    // Y- axis arrow (dark green)
+    const yArrowNeg = document.createElement('a-cone');
+    yArrowNeg.setAttribute('position', '0 -1 0');
+    yArrowNeg.setAttribute('rotation', '0 0 180');
+    yArrowNeg.setAttribute('radius-bottom', '0.1');
+    yArrowNeg.setAttribute('height', '0.5');
+    yArrowNeg.setAttribute('material', 'color: #00cc00');
+    yArrowNeg.setAttribute('data-axis', 'y-');
+    yArrowNeg.setAttribute('data-wall-id', wall.id);
+    yArrowNeg.classList.add('gizmo-arrow');
+    gizmo.appendChild(yArrowNeg);
+
+    // Z+ axis arrow (blue)
+    const zArrow = document.createElement('a-cone');
+    zArrow.setAttribute('position', '0 0 1');
+    zArrow.setAttribute('rotation', '90 0 0');
+    zArrow.setAttribute('radius-bottom', '0.1');
+    zArrow.setAttribute('height', '0.5');
+    zArrow.setAttribute('material', 'color: #0000ff');
+    zArrow.setAttribute('data-axis', 'z+');
+    zArrow.setAttribute('data-wall-id', wall.id);
+    zArrow.classList.add('gizmo-arrow');
+    gizmo.appendChild(zArrow);
+
+    // Z- axis arrow (dark blue)
+    const zArrowNeg = document.createElement('a-cone');
+    zArrowNeg.setAttribute('position', '0 0 -1');
+    zArrowNeg.setAttribute('rotation', '-90 0 0');
+    zArrowNeg.setAttribute('radius-bottom', '0.1');
+    zArrowNeg.setAttribute('height', '0.5');
+    zArrowNeg.setAttribute('material', 'color: #0000cc');
+    zArrowNeg.setAttribute('data-axis', 'z-');
+    zArrowNeg.setAttribute('data-wall-id', wall.id);
+    zArrowNeg.classList.add('gizmo-arrow');
+    gizmo.appendChild(zArrowNeg);
+
+    // Add click handlers
+    this.addGizmoClickHandlers(gizmo, 'wall', wall.id);
+
+    scene.appendChild(gizmo);
+  }
+
+  createCeilingGizmo(ceiling) {
+    const scene = document.querySelector('a-scene');
+    if (!scene) return;
+
+    // Remove existing gizmo if it exists
+    const existingGizmo = document.querySelector(`#gizmo-ceiling-${ceiling.id}`);
+    if (existingGizmo) {
+      existingGizmo.remove();
+    }
+
+    const gizmo = document.createElement('a-entity');
+    gizmo.setAttribute('id', `gizmo-ceiling-${ceiling.id}`);
+    gizmo.setAttribute('position', `${ceiling.position.x} ${ceiling.position.y} ${ceiling.position.z}`);
+    gizmo.classList.add('manipulation-gizmo');
+
+    // X+ axis arrow (red)
+    const xArrow = document.createElement('a-cone');
+    xArrow.setAttribute('position', '1 0 0');
+    xArrow.setAttribute('rotation', '0 0 -90');
+    xArrow.setAttribute('radius-bottom', '0.1');
+    xArrow.setAttribute('height', '0.5');
+    xArrow.setAttribute('material', 'color: #ff0000');
+    xArrow.setAttribute('data-axis', 'x+');
+    xArrow.setAttribute('data-ceiling-id', ceiling.id);
+    xArrow.classList.add('gizmo-arrow');
+    gizmo.appendChild(xArrow);
+
+    // X- axis arrow (dark red)
+    const xArrowNeg = document.createElement('a-cone');
+    xArrowNeg.setAttribute('position', '-1 0 0');
+    xArrowNeg.setAttribute('rotation', '0 0 90');
+    xArrowNeg.setAttribute('radius-bottom', '0.1');
+    xArrowNeg.setAttribute('height', '0.5');
+    xArrowNeg.setAttribute('material', 'color: #cc0000');
+    xArrowNeg.setAttribute('data-axis', 'x-');
+    xArrowNeg.setAttribute('data-ceiling-id', ceiling.id);
+    xArrowNeg.classList.add('gizmo-arrow');
+    gizmo.appendChild(xArrowNeg);
+
+    // Y+ axis arrow (green)
+    const yArrow = document.createElement('a-cone');
+    yArrow.setAttribute('position', '0 1 0');
+    yArrow.setAttribute('radius-bottom', '0.1');
+    yArrow.setAttribute('height', '0.5');
+    yArrow.setAttribute('material', 'color: #00ff00');
+    yArrow.setAttribute('data-axis', 'y+');
+    yArrow.setAttribute('data-ceiling-id', ceiling.id);
+    yArrow.classList.add('gizmo-arrow');
+    gizmo.appendChild(yArrow);
+
+    // Y- axis arrow (dark green)
+    const yArrowNeg = document.createElement('a-cone');
+    yArrowNeg.setAttribute('position', '0 -1 0');
+    yArrowNeg.setAttribute('rotation', '0 0 180');
+    yArrowNeg.setAttribute('radius-bottom', '0.1');
+    yArrowNeg.setAttribute('height', '0.5');
+    yArrowNeg.setAttribute('material', 'color: #00cc00');
+    yArrowNeg.setAttribute('data-axis', 'y-');
+    yArrowNeg.setAttribute('data-ceiling-id', ceiling.id);
+    yArrowNeg.classList.add('gizmo-arrow');
+    gizmo.appendChild(yArrowNeg);
+
+    // Z+ axis arrow (blue)
+    const zArrow = document.createElement('a-cone');
+    zArrow.setAttribute('position', '0 0 1');
+    zArrow.setAttribute('rotation', '90 0 0');
+    zArrow.setAttribute('radius-bottom', '0.1');
+    zArrow.setAttribute('height', '0.5');
+    zArrow.setAttribute('material', 'color: #0000ff');
+    zArrow.setAttribute('data-axis', 'z+');
+    zArrow.setAttribute('data-ceiling-id', ceiling.id);
+    zArrow.classList.add('gizmo-arrow');
+    gizmo.appendChild(zArrow);
+
+    // Z- axis arrow (dark blue)
+    const zArrowNeg = document.createElement('a-cone');
+    zArrowNeg.setAttribute('position', '0 0 -1');
+    zArrowNeg.setAttribute('rotation', '-90 0 0');
+    zArrowNeg.setAttribute('radius-bottom', '0.1');
+    zArrowNeg.setAttribute('height', '0.5');
+    zArrowNeg.setAttribute('material', 'color: #0000cc');
+    zArrowNeg.setAttribute('data-axis', 'z-');
+    zArrowNeg.setAttribute('data-ceiling-id', ceiling.id);
+    zArrowNeg.classList.add('gizmo-arrow');
+    gizmo.appendChild(zArrowNeg);
+
+    // Add click handlers
+    this.addGizmoClickHandlers(gizmo, 'ceiling', ceiling.id);
+
+    scene.appendChild(gizmo);
+  }
+
+  addGizmoClickHandlers(gizmo, type, id) {
+    const arrows = gizmo.querySelectorAll('.gizmo-arrow');
+    arrows.forEach(arrow => {
+      // Add raycaster for mouse interaction
+      arrow.setAttribute('raycastable', '');
+      
+      // Use mouse events for desktop interaction
+      arrow.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const axis = arrow.getAttribute('data-axis');
+        this.handleGizmoClick(type, id, axis);
+      });
+
+      // Use click events as backup
+      arrow.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const axis = arrow.getAttribute('data-axis');
+        this.handleGizmoClick(type, id, axis);
+      });
+
+      // Touch events for mobile
+      arrow.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const axis = arrow.getAttribute('data-axis');
+        this.handleGizmoClick(type, id, axis);
+      });
+
+      // Add hover effects
+      arrow.addEventListener('mouseenter', () => {
+        const originalColor = arrow.getAttribute('material').color;
+        arrow.setAttribute('material', `color: ${originalColor}; opacity: 0.8`);
+        arrow.setAttribute('scale', '1.2 1.2 1.2');
+      });
+
+      arrow.addEventListener('mouseleave', () => {
+        const originalColor = arrow.getAttribute('material').color;
+        arrow.setAttribute('material', `color: ${originalColor}; opacity: 1`);
+        arrow.setAttribute('scale', '1 1 1');
+      });
+    });
+  }
+
+  handleGizmoClick(type, id, axis) {
+    console.log('Gizmo clicked!', { type, id, axis }); // Debug log
+    const step = 0.5; // Movement step size
+    let element;
+    
+    if (type === 'wall') {
+      element = this.walls.find(w => w.id === id);
+    } else {
+      element = this.ceilings.find(c => c.id === id);
+    }
+
+    if (!element) {
+      console.log('Element not found!', { type, id });
+      return;
+    }
+
+    // Update position based on axis
+    if (axis === 'x+') {
+      element.position.x += step;
+    } else if (axis === 'x-') {
+      element.position.x -= step;
+    } else if (axis === 'y+') {
+      element.position.y += step;
+    } else if (axis === 'y-') {
+      element.position.y -= step;
+    } else if (axis === 'z+') {
+      element.position.z += step;
+    } else if (axis === 'z-') {
+      element.position.z -= step;
+    }
+
+    console.log('New position:', element.position); // Debug log
+
+    // Update the 3D scene
+    if (type === 'wall') {
+      this.updateWallInScene(element);
+      this.updateWallGizmo(element);
+    } else {
+      this.updateCeilingInScene(element);
+      this.updateCeilingGizmo(element);
+    }
+
+    // Update the editor inputs
+    this.updateEditorInputs(type, id, element);
+  }
+
+
+  updateWallGizmo(wall) {
+    const gizmo = document.querySelector(`#gizmo-wall-${wall.id}`);
+    if (gizmo) {
+      gizmo.setAttribute('position', `${wall.position.x} ${wall.position.y} ${wall.position.z}`);
+    }
+  }
+
+  updateCeilingGizmo(ceiling) {
+    const gizmo = document.querySelector(`#gizmo-ceiling-${ceiling.id}`);
+    if (gizmo) {
+      gizmo.setAttribute('position', `${ceiling.position.x} ${ceiling.position.y} ${ceiling.position.z}`);
+    }
+  }
+
+  updateEditorInputs(type, id, element) {
+    if (type === 'wall') {
+      // Update wall position inputs
+      const xInput = document.querySelector(`input[data-wall-id="${id}"][data-property="position.x"]`);
+      const yInput = document.querySelector(`input[data-wall-id="${id}"][data-property="position.y"]`);
+      const zInput = document.querySelector(`input[data-wall-id="${id}"][data-property="position.z"]`);
+      
+      if (xInput) xInput.value = element.position.x;
+      if (yInput) yInput.value = element.position.y;
+      if (zInput) zInput.value = element.position.z;
+    } else {
+      // Update ceiling position inputs
+      const xInput = document.querySelector(`input[data-ceiling-id="${id}"][data-property="position.x"]`);
+      const yInput = document.querySelector(`input[data-ceiling-id="${id}"][data-property="position.y"]`);
+      const zInput = document.querySelector(`input[data-ceiling-id="${id}"][data-property="position.z"]`);
+      
+      if (xInput) xInput.value = element.position.x;
+      if (yInput) yInput.value = element.position.y;
+      if (zInput) zInput.value = element.position.z;
+    }
+  }
+
+  toggleGizmos() {
+    const gizmos = document.querySelectorAll('.manipulation-gizmo');
+    const isVisible = gizmos.length > 0 && gizmos[0].getAttribute('visible') !== 'false';
+    
+    gizmos.forEach(gizmo => {
+      gizmo.setAttribute('visible', !isVisible);
+    });
+
+    // Update button text
+    const toggleBtn = document.getElementById('toggle-gizmos');
+    if (toggleBtn) {
+      toggleBtn.textContent = isVisible ? 'Show Manipulation Arrows' : 'Hide Manipulation Arrows';
+    }
+  }
+
+  disableGazeCursorInEditor() {
+    // Disable the gaze cursor in editor mode for better mouse interaction
+    const cursor = document.querySelector('a-cursor');
+    if (cursor) {
+      cursor.setAttribute('visible', false);
+      cursor.setAttribute('raycaster', 'objects: .clickable');
+    }
+
+    // Also disable look-controls pointer lock to prevent gaze interference
+    const camera = document.querySelector('#head');
+    if (camera) {
+      camera.setAttribute('look-controls', 'pointerLockEnabled: false; reverseMouseDrag: false');
+    }
+
+    // Disable VR controllers in editor mode
+    const leftController = document.querySelector('#left-controller');
+    const rightController = document.querySelector('#right-controller');
+    if (leftController) leftController.setAttribute('visible', false);
+    if (rightController) rightController.setAttribute('visible', false);
+
+    console.log('Gaze cursor disabled in editor mode for better mouse interaction');
+  }
+
+  enableGazeCursorForExport() {
+    // Re-enable gaze cursor for exported scenes
+    const cursor = document.querySelector('a-cursor');
+    if (cursor) {
+      cursor.setAttribute('visible', true);
+      cursor.setAttribute('raycaster', 'objects: .clickable');
+    }
+
+    // Re-enable look-controls for VR
+    const camera = document.querySelector('#head');
+    if (camera) {
+      camera.setAttribute('look-controls', 'pointerLockEnabled: true; reverseMouseDrag: false');
+    }
+
+    // Re-enable VR controllers for exported scenes
+    const leftController = document.querySelector('#left-controller');
+    const rightController = document.querySelector('#right-controller');
+    if (leftController) leftController.setAttribute('visible', true);
+    if (rightController) rightController.setAttribute('visible', true);
+
+    console.log('Gaze cursor re-enabled for export');
+  }
+
+  loadWallsAndCeilingsFromConfig() {
+    if (!museumConfig) return;
+
+    this.walls = museumConfig.walls || [];
+    this.ceilings = museumConfig.ceilings || [];
+
+    // Clear existing walls and ceilings from scene
+    document.querySelectorAll('.wall-element, .ceiling-element').forEach(el => el.remove());
+
+    // Create walls and ceilings in scene
+    this.walls.forEach(wall => this.createWallInScene(wall));
+    this.ceilings.forEach(ceiling => this.createCeilingInScene(ceiling));
+
+    // Render the UI
+    this.renderWallsList();
+    this.renderCeilingsList();
+  }
+
+  updateWallsAndCeilings() {
+    if (!museumConfig) return;
+
+    museumConfig.walls = this.walls;
+    museumConfig.ceilings = this.ceilings;
+
+    // Save to config file
+    this.saveConfiguration();
+    
+    console.log('Walls and ceilings updated:', { walls: this.walls, ceilings: this.ceilings });
+  }
+
+  resetWallsAndCeilings() {
+    if (confirm('Are you sure you want to delete all walls and ceilings?')) {
+      this.walls = [];
+      this.ceilings = [];
+      
+      // Clear from scene
+      document.querySelectorAll('.wall-element, .ceiling-element').forEach(el => el.remove());
+      
+      // Update UI
+      this.renderWallsList();
+      this.renderCeilingsList();
+      
+      // Update config
+      this.updateWallsAndCeilings();
+    }
+  }
 }
 
 // Initialize museum when DOM is loaded
@@ -6088,12 +7571,20 @@ document.addEventListener("DOMContentLoaded", () => {
   let museumProject;
   let modelEditor;
   
+  // Initialize immediately instead of with delays
+  console.log('🚀 Initializing museum...');
+  museumProject = new MuseumProject();
+  
+  // Initialize model editor after museum is set up (reduced delay)
   setTimeout(() => {
-    museumProject = new MuseumProject();
+    console.log('🎨 Initializing model editor...');
+    modelEditor = new ModelEditor(museumProject);
+    // Expose for other code paths to reference
+    window.modelEditor = modelEditor;
     
-    // Initialize model editor after museum is set up
-    setTimeout(() => {
-      modelEditor = new ModelEditor(museumProject);
-    }, 2000);
-  }, 1000);
+    // Ensure template UI updates after editor is ready
+    if (modelEditor && typeof modelEditor.updateCurrentTemplateDisplay === 'function') {
+      modelEditor.updateCurrentTemplateDisplay();
+    }
+  }, 500); // Reduced from 2000ms to 500ms
 });

@@ -1,0 +1,307 @@
+{
+  "name": "House Museum",
+  "created": "2025-09-22T00:00:00.000Z",
+  "version": "1.0",
+  "description": "Indoor house layout with rooms and door-to-room navigation hotspots.",
+  "template": {
+    "id": "house-template",
+    "name": "House Template"
+  },
+  "assets": {
+    "images": {
+      "image1": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/images/house1_1758654987421.png",
+      "image2": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/images/house2_1758654984089.png",
+      "image3": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/images/house3_1758654981755.png",
+      "arrowLeft": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/left_1758485303552.png",
+      "arrowRight": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/right_1758485302607.png",
+      "grid": "images/border.jpg",
+      "sky": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Dan%20Pacheco/images/1_1753114668355.jpg",
+      "ground": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/leaves_1758475586342.png",
+      "hotspot": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/hotspot_1758485223541.png"
+    },
+    "models": {
+      "tomato": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/student1/3d/vegetablesalad_1758308877432.glb",
+      "eggplant": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/3d/rocks_1758665910940.glb",
+      "onion": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/onions_1758376229101.glb",
+      "furniture-model": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/wooden-table_1758977396630.glb",
+      "lamp-model": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/3d/rocks_1758665910940.glb?t=1758930941810&t=1758975589144&t=1758976025396&t=1758977735416",
+      "door-model": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/onions_1758376229101.glb?t=1758930941811&t=1758975589144&t=1758976025397&t=1758977735416"
+    },
+    "audio": {
+      "audio1": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/audio/audio1_1758484808064.mp3",
+      "audiocarrots": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/audio/audio2_1758484807815.mp3",
+      "audioonion": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/audio/audio3_1758484807193.mp3",
+      "ambient": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Dan%20Pacheco/audio/natsound-walking_1753114698223.mp3",
+      "click": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/audio/click_1758493161872.mp3",
+      "teleport": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/audio/teleport_1758484984809.mp3"
+    }
+  },
+  "environment": {
+    "sky": {
+      "day": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Dan%20Pacheco/images/1_1753114668355.jpg",
+      "night": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Dan%20Pacheco/images/1_1753114668355.jpg"
+    },
+    "ground": {
+      "texture": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/leaves_1758475586342.png",
+      "repeat": "10 10",
+      "size": "100 100"
+    },
+    "lighting": {
+      "ambient": {
+        "color": "#DDD",
+        "intensity": 0.8
+      },
+      "directional": {
+        "color": "#FFF",
+        "intensity": 0.6,
+        "position": "0 5 0",
+        "castShadow": true
+      }
+    },
+    "physics": {
+      "floor": {
+        "position": "0 -0.1 0",
+        "size": "50 0.2 50",
+        "visible": false
+      },
+      "ceiling": {
+        "position": "0 3 0",
+        "size": "50 0.2 50",
+        "visible": false
+      }
+    }
+  },
+  "infoDisplay": {
+    "position": "0 0 -5",
+    "panel": {
+      "position": "0 2.6 -4",
+      "size": "4 2.5",
+      "images": [
+        "#image1",
+        "#image2",
+        "#image3"
+      ]
+    },
+    "navigation": {
+      "left": {
+        "position": "-2.3 0 0",
+        "size": "0.6 0.6"
+      },
+      "right": {
+        "position": "2.3 0 0",
+        "size": "0.6 0.6"
+      }
+    },
+    "text": {
+      "position": "0 -1.6 0",
+      "size": "4 0.8",
+      "content": {
+        "slide1": "Welcome to the house!",
+        "slide2": "Explore different rooms",
+        "slide3": "Click doors to navigate."
+      }
+    },
+    "rotation": "0 0 0"
+  },
+  "exhibits": [
+    {
+      "id": "living-room",
+      "name": "Living Room",
+      "position": "-10 0 -5",
+      "model": {
+        "id": "furniture-model",
+        "src": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/wooden-table_1758977396630.glb",
+        "position": "0 0 0",
+        "scale": "1 1 1",
+        "rotation": "0 0 0",
+        "castShadow": true
+      },
+      "environment": {
+        "geometry": "primitive: box; width: 8; height: 0.1; depth: 8",
+        "position": "0 0 0",
+        "material": "color: #8B4513; roughness: 0.8"
+      },
+      "hotspot": {
+        "id": "living-room-hotspot",
+        "position": "3 1.5 0",
+        "label": "Living Room",
+        "audio": "#audio1",
+        "info": "This is the living room with comfortable furniture.",
+        "vegetableModel": "furniture-model",
+        "revealAnimation": true
+      }
+    },
+    {
+      "id": "kitchen",
+      "name": "Kitchen",
+      "position": "10 0 -5",
+      "model": {
+        "id": "lamp-model",
+        "src": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/3d/rocks_1758665910940.glb?t=1758930941810&t=1758975589144&t=1758976025396&t=1758977735416",
+        "position": "0 1 0",
+        "scale": "1 1 1",
+        "rotation": "0 0 0",
+        "castShadow": true
+      },
+      "environment": {
+        "geometry": "primitive: box; width: 8; height: 0.1; depth: 8",
+        "position": "0 0 0",
+        "material": "color: #F5F5DC; roughness: 0.9"
+      },
+      "hotspot": {
+        "id": "kitchen-hotspot",
+        "position": "3 1.5 0",
+        "label": "Kitchen",
+        "audio": "#audiocarrots",
+        "info": "This is the kitchen where meals are prepared.",
+        "vegetableModel": "lamp-model",
+        "revealAnimation": true
+      }
+    },
+    {
+      "id": "bedroom",
+      "name": "Bedroom",
+      "position": "0 0 10",
+      "model": {
+        "id": "door-model",
+        "src": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/onions_1758376229101.glb?t=1758930941811&t=1758975589144&t=1758976025397&t=1758977735416",
+        "position": "0 1 0",
+        "scale": "1 1 1",
+        "rotation": "0 0 0",
+        "castShadow": true
+      },
+      "environment": {
+        "geometry": "primitive: box; width: 8; height: 0.1; depth: 8",
+        "position": "0 0 0",
+        "material": "color: #E6E6FA; roughness: 0.7"
+      },
+      "hotspot": {
+        "id": "bedroom-hotspot",
+        "position": "3 1.5 0",
+        "label": "Bedroom",
+        "audio": "#audioonion",
+        "info": "This is the bedroom for rest and relaxation.",
+        "vegetableModel": "door-model",
+        "revealAnimation": true
+      }
+    }
+  ],
+  "camera": {
+    "position": "0 1.6 0",
+    "lookControls": {
+      "pointerLockEnabled": true,
+      "reverseMouseDrag": false
+    },
+    "wasdControls": {
+      "fly": false
+    }
+  },
+  "mobileControls": {
+    "speed": 3,
+    "verticalMovementLocked": true
+  },
+  "dayNightCycle": {
+    "enabled": false
+  },
+  "soundEffects": {
+    "enabled": true,
+    "ambientDelay": 2000,
+    "ambientAudioEnabled": false
+  },
+  "loading": {
+    "enabled": true,
+    "timeout": 10000
+  },
+  "walls": [
+    {
+      "id": "wall_1758930948955",
+      "name": "wall_left",
+      "position": {
+        "x": -10,
+        "y": 2,
+        "z": -1
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "width": 8.1,
+      "height": 5,
+      "texture": "",
+      "tilingX": 1,
+      "tilingY": 1,
+      "brightness": 1,
+      "color": "#cccccc",
+      "visible": true
+    },
+    {
+      "id": "wall_1758975746794",
+      "name": "wall_back",
+      "position": {
+        "x": -14,
+        "y": 2,
+        "z": -5
+      },
+      "rotation": {
+        "x": 0,
+        "y": 90,
+        "z": 0
+      },
+      "width": 8.1,
+      "height": 5,
+      "texture": "",
+      "tilingX": 1,
+      "tilingY": 1,
+      "brightness": 1,
+      "color": "#cccccc",
+      "visible": true
+    },
+    {
+      "id": "wall_1758975795493",
+      "name": "wall_right",
+      "position": {
+        "x": -10,
+        "y": 2,
+        "z": -9
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "width": 8.1,
+      "height": 5,
+      "texture": "",
+      "tilingX": 1,
+      "tilingY": 1,
+      "brightness": 1,
+      "color": "#cccccc",
+      "visible": true
+    }
+  ],
+  "ceilings": [
+    {
+      "id": "ceiling_1758977802532",
+      "name": "Ceiling 1",
+      "position": {
+        "x": -10.6,
+        "y": 4.3,
+        "z": -4.9
+      },
+      "rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "width": 10.1,
+      "height": 8.9,
+      "texture": "",
+      "tilingX": 1,
+      "tilingY": 1,
+      "brightness": 1,
+      "color": "#ffffff",
+      "visible": true
+    }
+  ]
+}

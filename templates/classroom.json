@@ -1,0 +1,270 @@
+{
+    "name": "Classroom Museum",
+    "created": "2025-09-26T00:00:00.000Z",
+    "version": "1.0",
+    "description": "Educational classroom environment with interactive learning exhibits and study areas.",
+    "template": {
+      "id": "classroom",
+      "name": "Classroom"
+    },
+    "assets": {
+      "images": {
+        "image1": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/berrypicking_1758474111736.png",
+        "image2": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/field_1758474106342.png",
+        "image3": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/tomatotent_1758474109563.png",
+        "arrowLeft": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/left_1758485303552.png",
+        "arrowRight": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/right_1758485302607.png",
+        "grid": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/leaves_1758475586342.png",
+        "sky": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Dan%20Pacheco/images/1_1753114668355.jpg",
+        "ground": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/leaves_1758475586342.png",
+        "hotspot": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/hotspot_1758485223541.png"
+      },
+      "models": {
+        "tomato": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/tomato-plate_1758376233930.glb",
+        "eggplant": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/eggplant_1758376225454.glb",
+        "onion": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/onions_1758376229101.glb",
+        "tomato-model": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/tomato-plate_1758376233930.glb?t=1758918082460",
+        "rocks": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/3d/rocks_1758665910940.glb",
+        "onion-model": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/onions_1758376229101.glb?t=1758918082460"
+      },
+      "audio": {
+        "audio1": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/audio/audio1_1758484808064.mp3",
+        "audiocarrots": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/audio/audio2_1758484807815.mp3",
+        "audioonion": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/audio/audio3_1758484807193.mp3",
+        "ambient": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/newtest/audio/meadowfield2_1754926586672.mp3",
+        "click": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/audio/click_1758493161872.mp3",
+        "teleport": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/audio/teleport_1758484984809.mp3"
+      }
+    },
+    "environment": {
+      "sky": {
+        "day": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Dan%20Pacheco/images/1_1753114668355.jpg",
+        "night": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/Dan%20Pacheco/images/1_1753114668355.jpg"
+      },
+      "ground": {
+        "texture": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/leaves_1758475586342.png",
+        "repeat": "10 10",
+        "size": "100 100"
+      },
+      "lighting": {
+        "ambient": {
+          "color": "#DDD",
+          "intensity": 0.8
+        },
+        "directional": {
+          "color": "#FFF",
+          "intensity": 1,
+          "position": "1 1 1"
+        }
+      },
+      "fog": {
+        "type": "linear",
+        "color": "#87CEEB",
+        "near": 10,
+        "far": 50
+      },
+      "physics": {
+        "floor": {
+          "position": "0 -0.1 0",
+          "size": "50 0.2 50",
+          "visible": false
+        },
+        "ceiling": {
+          "position": "0 3 0",
+          "size": "50 0.2 50",
+          "visible": false
+        }
+      }
+    },
+    "infoDisplay": {
+      "position": "4.7 0.1 16",
+      "panel": {
+        "position": "0 2.6 -4",
+        "size": "4 2.5",
+        "images": [
+          "#image1",
+          "#image2",
+          "#image3"
+        ]
+      },
+      "navigation": {
+        "left": {
+          "position": "-2.3 0 0",
+          "size": "0.6 0.6"
+        },
+        "right": {
+          "position": "2.3 0 0",
+          "size": "0.6 0.6"
+        }
+      },
+      "text": {
+        "position": "0 -1.5 0",
+        "size": "4 1",
+        "content": {
+          "default": "Welcome to the Classroom Museum - Your interactive learning environment"
+        }
+      },
+      "rotation": "0 -23 32"
+    },
+    "exhibits": [
+      {
+        "id": "tomato-exhibit",
+        "name": "Tomato Learning Station",
+        "position": "-20 0 -10",
+        "model": {
+          "id": "tomato-model",
+          "src": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/tomato-plate_1758376233930.glb?t=1758918082460",
+          "position": "0 0 0",
+          "scale": "1 1 1",
+          "rotation": "0 0 0",
+          "castShadow": true
+        },
+        "environment": {
+          "geometry": "primitive: box; width: 2; height: 0.1; depth: 2",
+          "position": "0 0 0",
+          "material": "color: #8B4513; roughness: 0.8"
+        },
+        "hotspot": {
+          "id": "tomato-hotspot",
+          "position": "0 1.5 0",
+          "label": "Tomato Learning Station",
+          "info": "Learn about the growth cycle and nutritional benefits of tomatoes in this interactive educational station."
+        },
+        "audio": "audio1"
+      },
+      {
+        "id": "eggplant-exhibit",
+        "name": "Rocks Study Area",
+        "position": "0 0 -10",
+        "model": {
+          "id": "rocks",
+          "src": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/3d/rocks_1758665910940.glb",
+          "position": "0 0 0",
+          "scale": "2 2 2",
+          "rotation": "0 0 0",
+          "castShadow": true
+        },
+        "environment": {
+          "geometry": "primitive: box; width: 2; height: 0.1; depth: 2",
+          "position": "0 0 0",
+          "material": "color: #8B4513; roughness: 0.8"
+        },
+        "hotspot": {
+          "id": "eggplant-hotspot",
+          "position": "0 1.5 0",
+          "label": "Eggplant Study Area",
+          "info": "Explore the different varieties of eggplants and their culinary uses in this hands-on learning environment."
+        },
+        "audio": "audiocarrots"
+      },
+      {
+        "id": "onion-exhibit",
+        "name": "Onion Knowledge Center",
+        "position": "20 0 -10",
+        "model": {
+          "id": "onion-model",
+          "src": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/onions_1758376229101.glb?t=1758918082460",
+          "position": "0 0 0",
+          "scale": "1 1 1",
+          "rotation": "0 0 0",
+          "castShadow": true
+        },
+        "environment": {
+          "geometry": "primitive: box; width: 2; height: 0.1; depth: 2",
+          "position": "0 0 0",
+          "material": "color: #8B4513; roughness: 0.8"
+        },
+        "hotspot": {
+          "id": "onion-hotspot",
+          "position": "0 1.5 0",
+          "label": "Onion Knowledge Center",
+          "info": "Discover the history and cultivation techniques of onions through this educational exhibit."
+        },
+        "audio": "audioonion"
+      }
+    ],
+    "slideshow": {
+      "enabled": true,
+      "images": [
+        {
+          "url": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/berrypicking_1758474111736.png",
+          "text": "Welcome to the Classroom Museum - Your interactive learning environment"
+        },
+        {
+          "url": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/field_1758474106342.png",
+          "text": "Explore educational exhibits and learn about various topics through hands-on interaction"
+        },
+        {
+          "url": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/tomatotent_1758474109563.png",
+          "text": "Each station offers unique learning opportunities and interactive content"
+        }
+      ]
+    },
+    "camera": {
+      "position": {
+        "x": 0,
+        "y": 1.6,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      }
+    },
+    "settings": {
+      "ambientAudioEnabled": false,
+      "ambientAudioUrl": "https://hkfsgnludtapbbtsacwd.supabase.co/storage/v1/object/public/files/newtest/audio/meadowfield2_1754926586672.mp3",
+      "clickSoundUrl": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/audio/click_1758493161872.mp3",
+      "teleportSoundUrl": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/audio/teleport_1758484984809.mp3"
+    },
+    "soundEffects": {
+      "ambientAudioEnabled": false
+    },
+    "walls": [
+      {
+        "id": "wall_1",
+        "name": "Front Wall",
+        "position": { "x": 0, "y": 1.5, "z": -15 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "width": 30,
+        "height": 3,
+        "texture": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/leaves_1758475586342.png",
+        "tilingX": 3,
+        "tilingY": 2,
+        "brightness": 1.2,
+        "color": "#e8f5e8",
+        "visible": true
+      },
+      {
+        "id": "wall_2", 
+        "name": "Left Wall",
+        "position": { "x": -15, "y": 1.5, "z": 0 },
+        "rotation": { "x": 0, "y": 90, "z": 0 },
+        "width": 30,
+        "height": 3,
+        "texture": "",
+        "tilingX": 1,
+        "tilingY": 1,
+        "brightness": 1,
+        "color": "#f0f0f0",
+        "visible": true
+      }
+    ],
+    "ceilings": [
+      {
+        "id": "ceiling_1",
+        "name": "Main Ceiling",
+        "position": { "x": 0, "y": 3, "z": 0 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "width": 30,
+        "height": 30,
+        "texture": "",
+        "tilingX": 1,
+        "tilingY": 1,
+        "brightness": 1,
+        "color": "#f0f0f0",
+        "visible": true
+      }
+    ]
+  }

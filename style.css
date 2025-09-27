@@ -1,3 +1,13 @@
+/*
+Immersive Museum Maker - A tool that helps people create immersive storytelling worlds using the A-Frame open source library. Output is optimized for mobile phones, desktop (WASD keys) and the Meta Quest headset browser.
+
+Copyright (C) 2025  Dan Pacheco
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License in the LICENSE file of this repository for more details.
+*/
 /* Agriquest Vegetable Museum Styles */
 
 body {
@@ -492,6 +502,42 @@ body {
   color: rgba(255, 255, 255, 0.5);
 }
 
+.position-inputs {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.position-input {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.position-input label {
+  font-size: 12px;
+  margin-bottom: 3px;
+  color: #b0b0b0;
+}
+
+.position-input input {
+  width: 100%;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.position-input input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
 .vector-input {
   display: flex;
   gap: 5px;
@@ -746,4 +792,203 @@ body {
 
 .debug-info .debug-warning {
   color: #ff9800;
+}
+
+/* Walls and Ceilings Editor Styles */
+.walls-container, .ceilings-container {
+  margin-bottom: 20px;
+}
+
+.walls-header, .ceilings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.count-display {
+  font-size: 12px;
+  color: #666;
+  font-weight: bold;
+}
+
+.walls-list, .ceilings-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 5px;
+}
+
+.wall-item, .ceiling-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.wall-item-header, .ceiling-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.wall-item-title, .ceiling-item-title {
+  font-weight: bold;
+  font-size: 13px;
+  color: #fff;
+}
+
+.wall-item-controls, .ceiling-item-controls {
+  display: flex;
+  gap: 5px;
+}
+
+.wall-item-controls button, .ceiling-item-controls button {
+  padding: 4px 8px;
+  font-size: 11px;
+  border: 1px solid #555;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.wall-item-controls button:hover, .ceiling-item-controls button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.wall-item-controls .delete-btn {
+  background: rgba(244, 67, 54, 0.3);
+  border-color: #f44336;
+}
+
+.wall-item-controls .delete-btn:hover {
+  background: rgba(244, 67, 54, 0.5);
+}
+
+.wall-properties, .ceiling-properties {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.wall-property, .ceiling-property {
+  display: flex;
+  flex-direction: column;
+}
+
+.wall-property label, .ceiling-property label {
+  font-size: 11px;
+  color: #ccc;
+  margin-bottom: 2px;
+}
+
+.wall-property input, .ceiling-property input {
+  padding: 4px 6px;
+  border: 1px solid #555;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.wall-property input:focus, .ceiling-property input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.wall-property.full-width, .ceiling-property.full-width {
+  grid-column: 1 / -1;
+}
+
+.texture-preview {
+  width: 100%;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #666;
+}
+
+.texture-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Brightness Control Styling */
+input[type="range"] {
+  width: 100%;
+  height: 20px;
+  background: transparent;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+input[type="range"]::-webkit-slider-track {
+  background: rgba(255, 255, 255, 0.2);
+  height: 4px;
+  border-radius: 2px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #4CAF50;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+input[type="range"]::-moz-range-track {
+  background: rgba(255, 255, 255, 0.2);
+  height: 4px;
+  border-radius: 2px;
+  border: none;
+}
+
+input[type="range"]::-moz-range-thumb {
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #4CAF50;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.brightness-value {
+  font-size: 11px;
+  color: #4CAF50;
+  font-weight: bold;
+  margin-left: 8px;
+  min-width: 30px;
+  display: inline-block;
+}
+
+/* Gizmo Arrow Styles */
+.gizmo-arrow {
+  cursor: pointer;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.gizmo-arrow:hover {
+  cursor: pointer;
 }

@@ -1,3 +1,13 @@
+/*
+Immersive Museum Maker - A tool that helps people create immersive storytelling worlds using the A-Frame open source library. Output is optimized for mobile phones, desktop (WASD keys) and the Meta Quest headset browser.
+
+Copyright (C) 2025  Dan Pacheco
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License in the LICENSE file of this repository for more details.
+*/
 // Express server for Immersive Museum VR Experience
 const express = require("express");
 const path = require("path");
@@ -6,11 +16,110 @@ const multer = require("multer");
 const unzipper = require("unzipper");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // Serve static files from the root directory
-app.use(express.static("."));
 app.use(express.json());
+
+// Professor routes (must be before static middleware)
+app.get("/professor/submissions", (req, res) => {
+  try {
+    if (!fs.existsSync(submissionsLog)) return res.json([]);
+    const logs = fs
+      .readFileSync(submissionsLog, "utf8")
+      .split("\n")
+      .filter((l) => l.trim())
+      .map((l) => JSON.parse(l));
+    res.json(logs);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/professor/download/:filename", (req, res) => {
+  try {
+    const zipPath = path.join(submissionsDir, req.params.filename);
+    if (!fs.existsSync(zipPath)) {
+      return res.status(404).json({ error: "File not found" });
+    }
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${req.params.filename}"`
+    );
+    res.setHeader("Content-Type", "application/zip");
+    res.download(zipPath, req.params.filename, (err) => {
+      if (err && !res.headersSent) {
+        res.status(500).json({ error: "Download failed" });
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/professor/download-html/:filename", (req, res) => {
+  try {
+    const zipPath = path.join(submissionsDir, req.params.filename);
+    if (!fs.existsSync(zipPath)) {
+      return res.status(404).json({ error: "File not found" });
+    }
+
+    // Extract the zip to a temporary directory
+    const tempDir = path.join(__dirname, 'temp', Date.now().toString());
+    fs.mkdirSync(tempDir, { recursive: true });
+
+    fs.createReadStream(zipPath)
+      .pipe(unzipper.Extract({ path: tempDir }))
+      .on('close', () => {
+        try {
+          // Look for museum-scene.html first, then fall back to export/index.html
+          let htmlPath = path.join(tempDir, 'museum-scene.html');
+          let downloadName = 'museum-scene.html';
+          
+          if (!fs.existsSync(htmlPath)) {
+            htmlPath = path.join(tempDir, 'export', 'index.html');
+            downloadName = 'index.html';
+          }
+          
+          if (!fs.existsSync(htmlPath)) {
+            // Final fallback to root index.html
+            htmlPath = path.join(tempDir, 'index.html');
+            downloadName = 'index.html';
+          }
+
+          if (!fs.existsSync(htmlPath)) {
+            return res.status(404).json({ error: "HTML file not found in submission" });
+          }
+
+          res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${downloadName}"`
+          );
+          res.setHeader("Content-Type", "text/html");
+          res.sendFile(htmlPath, (err) => {
+            // Clean up temp directory
+            fs.rmSync(tempDir, { recursive: true, force: true });
+            if (err && !res.headersSent) {
+              res.status(500).json({ error: "Download failed" });
+            }
+          });
+        } catch (e) {
+          // Clean up temp directory
+          fs.rmSync(tempDir, { recursive: true, force: true });
+          res.status(500).json({ error: e.message });
+        }
+      })
+      .on('error', (err) => {
+        // Clean up temp directory
+        fs.rmSync(tempDir, { recursive: true, force: true });
+        res.status(500).json({ error: "Failed to extract submission" });
+      });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.use(express.static("."));
 
 // Data directories
 const submissionsDir = path.join(__dirname, "student-projects");
@@ -25,12 +134,7 @@ for (const dir of [submissionsDir, hostedDirRoot]) {
 // Multer upload config
 const upload = multer({ dest: submissionsDir });
 
-// Serve the main VR experience
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
-});
-
-// Health check endpoint for Render
+// Health check endpoint for Render (must be before template routes)
 app.get("/health", (req, res) => {
   res.status(200).json({ 
     status: "OK", 
@@ -39,20 +143,56 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Professor API: list submissions
-app.get("/professor/submissions", (req, res) => {
-  try {
-    if (!fs.existsSync(submissionsLog)) return res.json([]);
-    const logs = fs
-      .readFileSync(submissionsLog, "utf8")
-      .split("\n")
-      .filter((l) => l.trim())
-      .map((l) => JSON.parse(l));
-    res.json(logs);
-  } catch (e) {
-    res.status(500).json({ error: "Unable to read submissions" });
-  }
+// Serve the template selection page at root
+app.get("/", (req, res) => {
+  console.log("Serving template selection page at root");
+  res.sendFile(path.join(__dirname, "index.html"));
 });
+
+// Serve the main VR experience at /editor
+app.get("/editor", (req, res) => {
+  res.sendFile(path.join(__dirname, "editor.html"));
+});
+
+// Template-specific routes
+app.get("/:template", (req, res) => {
+  const template = req.params.template;
+  
+  // Handle template aliases
+  const templateAliases = {
+    'house': 'house-template',
+    'outdoor': 'outdoor-exploration',
+    'classroom': 'classroom'
+  };
+  
+  const actualTemplate = templateAliases[template] || template;
+  const templatePath = path.join(__dirname, "templates", `${actualTemplate}.json`);
+  
+  // Check if template exists
+  if (!fs.existsSync(templatePath)) {
+    return res.status(404).send(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>Template Not Found</title></head>
+      <body>
+        <h1>Template Not Found</h1>
+        <p>Template "${template}" does not exist.</p>
+        <p>Available templates:</p>
+        <ul>
+          <li><a href="/outdoor-exploration">outdoor-exploration</a></li>
+          <li><a href="/house">house</a></li>
+          <li><a href="/classroom">classroom</a></li>
+        </ul>
+      </body>
+      </html>
+    `);
+  }
+  
+  // Serve the main editor with template parameter
+  res.sendFile(path.join(__dirname, "editor.html"));
+});
+
+// Professor API: list submissions
 
 // Student: submit project zip
 app.post("/submit-project", upload.single("project"), (req, res) => {
@@ -106,9 +246,15 @@ app.post("/professor/host/:filename", async (req, res) => {
         .on("error", reject);
     });
 
-    // Determine preferred index path (prefer exported runtime over editor)
+    // Determine preferred index path (prefer standalone museum-scene.html over export/index.html)
     function resolveHostedIndex(dir) {
-      // Prefer any nested export/index.html first (even if export is inside a subfolder)
+      // Prefer standalone museum-scene.html first
+      const museumScenePath = path.join(dir, 'museum-scene.html');
+      if (fs.existsSync(museumScenePath)) {
+        return 'museum-scene.html';
+      }
+      
+      // Fallback to export/index.html if museum-scene.html doesn't exist
       const stack = [dir];
       let fallback = null;
       let exportCandidate = null;
@@ -142,12 +288,14 @@ app.post("/professor/host/:filename", async (req, res) => {
       return fallback || "index.html";
     }
 
-    // If an export/ exists but no index.html inside, try to flatten
-    // Strong preference: exported runtime html
+    // Strong preference: standalone museum-scene.html, then export/index.html
+    const museumSceneRel = fs.existsSync(path.join(targetDir, 'museum-scene.html'))
+      ? 'museum-scene.html'
+      : null;
     const exportRel = fs.existsSync(path.join(targetDir, 'export', 'index.html'))
       ? 'export/index.html'
       : null;
-    const relIndex = exportRel || resolveHostedIndex(targetDir);
+    const relIndex = museumSceneRel || exportRel || resolveHostedIndex(targetDir);
 
     // Update submissions log
     const logs = fs.existsSync(submissionsLog)
@@ -232,27 +380,54 @@ app.delete("/professor/delete/:filename", (req, res) => {
   }
 });
 
-// Professor: download original ZIP
-app.get("/professor/download/:filename", (req, res) => {
+// Save template configuration
+app.post("/save-template", (req, res) => {
   try {
-    const zipPath = path.join(submissionsDir, req.params.filename);
-    if (!fs.existsSync(zipPath)) {
-      return res.status(404).json({ error: "File not found" });
+    const { template, config } = req.body;
+    
+    if (!template || !config) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Template name and config are required" 
+      });
     }
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${req.params.filename}"`
-    );
-    res.setHeader("Content-Type", "application/zip");
-    res.download(zipPath, req.params.filename, (err) => {
-      if (err && !res.headersSent) {
-        res.status(500).json({ error: "Download failed" });
-      }
+
+    // Handle template aliases
+    const templateAliases = {
+      'house': 'house-template',
+      'outdoor': 'outdoor-exploration',
+      'classroom': 'classroom'
+    };
+    
+    const actualTemplate = templateAliases[template] || template;
+    const templatePath = path.join(__dirname, "templates", `${actualTemplate}.json`);
+    
+    // Check if template exists
+    if (!fs.existsSync(templatePath)) {
+      return res.status(404).json({ 
+        success: false, 
+        error: `Template "${template}" does not exist` 
+      });
+    }
+
+    // Write the updated config to the template file
+    fs.writeFileSync(templatePath, JSON.stringify(config, null, 2));
+    
+    console.log(`✅ Template "${template}" updated successfully`);
+    res.json({ 
+      success: true, 
+      message: `Template "${template}" updated successfully` 
     });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    
+  } catch (error) {
+    console.error('Error saving template:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
   }
 });
+
 
 // Start the server
 app.listen(PORT, () => {

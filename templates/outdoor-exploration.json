@@ -1,12 +1,12 @@
 {
+  "name": "Outdoor Exploration Museum",
+  "created": "2025-01-27T00:00:00.000Z",
+  "version": "1.0",
+  "description": "Open-air farm/field with exhibits and hotspots. Current default experience.",
   "template": {
     "id": "outdoor-exploration",
     "name": "Outdoor Exploration"
   },
-  "name": "Test Museum",
-  "created": "2025-01-27T00:00:00.000Z",
-  "version": "1.0",
-  "description": "Test Museum with proper asset references",
   "assets": {
     "images": {
       "image1": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/images/berrypicking_1758474111736.png",
@@ -202,10 +202,11 @@
   "soundEffects": {
     "enabled": true,
     "ambientDelay": 2000,
-    "ambientAudioEnabled": true
+    "ambientAudioEnabled": false
   },
   "loading": {
     "enabled": true,
     "timeout": 10000
   }
 }
+
