@@ -512,37 +512,45 @@ AFRAME.registerComponent("enhanced-mobile-controls", {
     this.verticalMovementLocked = true;
     
     this.updateTouches = function (event) {
+      // Prevent default to stop scrolling and other touch behaviors
       event.preventDefault();
       self.numFingers = event.touches.length;
     };
     
     this.clearTouches = function (event) {
+      // Prevent default to stop scrolling and other touch behaviors
       event.preventDefault();
       self.numFingers = (event.touches && event.touches.length) || 0;
     };
     
     this.el.sceneEl.addEventListener("renderstart", function () {
       var canvas = self.el.sceneEl.canvas;
+      // Use passive: false for movement controls to work properly
       canvas.addEventListener("touchstart", self.updateTouches, { passive: false });
       canvas.addEventListener("touchmove", self.updateTouches, { passive: false });
       canvas.addEventListener("touchend", self.clearTouches, { passive: false });
       canvas.addEventListener("touchcancel", self.clearTouches, { passive: false });
     });
     
-    if (AFRAME.utils.device.isMobile()) {
-      var leftCtrl = document.querySelector("#left-controller");
-      var rightCtrl = document.querySelector("#right-controller");
-      if (leftCtrl) {
-        leftCtrl.removeAttribute("blink-controls");
+    // Initialize mobile controls safely
+    try {
+      if (AFRAME.utils.device.isMobile()) {
+        var leftCtrl = document.querySelector("#left-controller");
+        var rightCtrl = document.querySelector("#right-controller");
+        if (leftCtrl) {
+          leftCtrl.removeAttribute("blink-controls");
+        }
+        if (rightCtrl) {
+          rightCtrl.removeAttribute("blink-controls");
+        }
       }
-      if (rightCtrl) {
-        rightCtrl.removeAttribute("blink-controls");
-      }
+    } catch (error) {
+      console.warn('Error initializing mobile controls:', error);
     }
     
     const controlsGuide = document.createElement('div');
     controlsGuide.className = 'controls-guide';
-    controlsGuide.innerHTML = 'Touch screen to move:<br>• One finger - Move forward<br>• Two fingers - Move backward<br>• Look around to change direction';
+    controlsGuide.innerHTML = 'Touch screen to move:<br>• One thumb down - Move forward<br>• Two thumbs down - Move backward<br>• Look around to change direction';
     document.body.appendChild(controlsGuide);
     
     setTimeout(() => {
@@ -559,7 +567,7 @@ AFRAME.registerComponent("enhanced-mobile-controls", {
     }
     
     var distance = this.data.speed * (deltaTime / 1000);
-    var moveMultiplier = this.numFingers === 1 ? -1 : 1;
+    var moveMultiplier = this.numFingers === 1 ? 1 : -1; // One thumb forward, two thumbs backward
     
     var cameraEl = this.el.querySelector("[camera]");
     if (cameraEl) {
@@ -1704,7 +1712,7 @@ class MuseumProject {
     setTimeout(() => {
       const controlsGuide = document.querySelector('.controls-guide');
       if (AFRAME.utils.device.isMobile()) {
-        controlsGuide.innerHTML = 'Touch screen to move:<br>• One finger - Move forward<br>• Two fingers - Move backward<br>• Look around to change direction';
+        controlsGuide.innerHTML = 'Touch screen to move:<br>• One thumb down - Move forward<br>• Two thumbs down - Move backward<br>• Look around to change direction';
       } else {
         controlsGuide.innerHTML = 'Desktop Controls:<br>• WASD/Arrow Keys - Move<br>• Mouse - Look around<br>• Click - Interact with hotspots';
       }
@@ -3982,13 +3990,27 @@ class ModelEditor {
     <meta charset="UTF-8">
     <title>${config.name || 'Immersive Museum'}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls/dist/aframe-blink-controls.min.js"></script>
     <script src="https://unpkg.com/aframe-thumb-controls-component@1.1.0/dist/aframe-thumb-controls-component.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
     <script src="https://recast-api.donmccurdy.com/aframe-inspector-plugin-recast.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-physics-system@v4.0.1/dist/aframe-physics-system.min.js"></script>
+    
+    <!-- Mobile Console for Debugging - Removed to fix 404 error -->
+    
+    <!-- Error handling for THREE.js compatibility -->
+    <script>
+        // Handle THREE.js compatibility issues
+        window.addEventListener('error', function(e) {
+            if (e.message.includes('THREE.Geometry') || e.message.includes('THREE.Math')) {
+                console.warn('THREE.js compatibility issue suppressed:', e.message);
+                e.preventDefault();
+                return true;
+            }
+        });
+    </script>
     
     <style>
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
@@ -4054,37 +4076,45 @@ class ModelEditor {
                 this.verticalMovementLocked = true;
                 
                 this.updateTouches = function (event) {
+                    // Prevent default to stop scrolling and other touch behaviors
                     event.preventDefault();
                     self.numFingers = event.touches.length;
                 };
                 
                 this.clearTouches = function (event) {
+                    // Prevent default to stop scrolling and other touch behaviors
                     event.preventDefault();
                     self.numFingers = (event.touches && event.touches.length) || 0;
                 };
                 
                 this.el.sceneEl.addEventListener("renderstart", function () {
                     var canvas = self.el.sceneEl.canvas;
+                    // Use passive: false for movement controls to work properly
                     canvas.addEventListener("touchstart", self.updateTouches, { passive: false });
                     canvas.addEventListener("touchmove", self.updateTouches, { passive: false });
                     canvas.addEventListener("touchend", self.clearTouches, { passive: false });
                     canvas.addEventListener("touchcancel", self.clearTouches, { passive: false });
                 });
                 
-                if (AFRAME.utils.device.isMobile()) {
-                    var leftCtrl = document.querySelector("#left-controller");
-                    var rightCtrl = document.querySelector("#right-controller");
-                    if (leftCtrl) {
-                        leftCtrl.removeAttribute("blink-controls");
+                // Initialize mobile controls safely
+                try {
+                    if (AFRAME.utils.device.isMobile()) {
+                        var leftCtrl = document.querySelector("#left-controller");
+                        var rightCtrl = document.querySelector("#right-controller");
+                        if (leftCtrl) {
+                            leftCtrl.removeAttribute("blink-controls");
+                        }
+                        if (rightCtrl) {
+                            rightCtrl.removeAttribute("blink-controls");
+                        }
                     }
-                    if (rightCtrl) {
-                        rightCtrl.removeAttribute("blink-controls");
-                    }
+                } catch (error) {
+                    console.warn('Error initializing mobile controls:', error);
                 }
                 
                 const controlsGuide = document.createElement('div');
                 controlsGuide.className = 'controls-guide';
-                controlsGuide.innerHTML = 'Touch screen to move:<br>• One finger - Move forward<br>• Two fingers - Move backward<br>• Look around to change direction';
+                controlsGuide.innerHTML = 'Touch screen to move:<br>• One thumb down - Move forward<br>• Two thumbs down - Move backward<br>• Look around to change direction';
                 document.body.appendChild(controlsGuide);
                 
                 setTimeout(() => {
@@ -4101,7 +4131,7 @@ class ModelEditor {
                 }
                 
                 var distance = this.data.speed * (deltaTime / 1000);
-                var moveMultiplier = this.numFingers === 1 ? -1 : 1;
+                var moveMultiplier = this.numFingers === 1 ? 1 : -1; // One thumb forward, two thumbs backward
                 
                 var cameraEl = this.el.querySelector("[camera]");
                 if (cameraEl) {
@@ -4507,7 +4537,7 @@ class ModelEditor {
 
 <body>
     <a-scene 
-        cursor="rayOrigin: mouse" 
+        cursor="rayOrigin: mouse; objects: .clickable" 
         sound-effects
         static-skybox>
         <!-- UI Overlays -->
@@ -4536,6 +4566,7 @@ class ModelEditor {
                     animation__fusing="property: scale; startEvents: fusing; easing: easeInCubic; dur: 1500; from: 1 1 1; to: 0.1 0.1 0.1"
                     animation__mouseleave="property: scale; startEvents: mouseleave; easing: easeInCubic; dur: 500; to: 1 1 1"
                     raycaster="objects: .clickable"
+                    visible="true"
                 ></a-cursor>
             </a-entity>
 
@@ -7718,13 +7749,16 @@ Created: ${new Date().toLocaleString()}
         this.handleGizmoClick(type, id, axis);
       });
 
-      // Touch events for mobile
+      // Touch events for mobile - use passive: true for Safari compatibility
       arrow.addEventListener('touchstart', (e) => {
-        e.preventDefault();
+        // Only prevent default if we're actually handling the touch
+        if (e.touches && e.touches.length > 0) {
+          e.preventDefault();
+        }
         e.stopPropagation();
         const axis = arrow.getAttribute('data-axis');
         this.handleGizmoClick(type, id, axis);
-      });
+      }, { passive: true });
 
       // Add hover effects
       arrow.addEventListener('mouseenter', () => {
@@ -7840,11 +7874,18 @@ Created: ${new Date().toLocaleString()}
   }
 
   disableGazeCursorInEditor() {
-    // Disable the gaze cursor in editor mode for better mouse interaction
+    // Only disable cursor on desktop, keep it visible on mobile for interaction
     const cursor = document.querySelector('a-cursor');
     if (cursor) {
-      cursor.setAttribute('visible', false);
-      cursor.setAttribute('raycaster', 'objects: .clickable');
+      if (AFRAME.utils.device.isMobile()) {
+        // Keep cursor visible on mobile for touch interaction
+        cursor.setAttribute('visible', true);
+        cursor.setAttribute('raycaster', 'objects: .clickable');
+      } else {
+        // Hide cursor on desktop in editor mode for better mouse interaction
+        cursor.setAttribute('visible', false);
+        cursor.setAttribute('raycaster', 'objects: .clickable');
+      }
     }
 
     // Also disable look-controls pointer lock to prevent gaze interference
@@ -7859,7 +7900,7 @@ Created: ${new Date().toLocaleString()}
     if (leftController) leftController.setAttribute('visible', false);
     if (rightController) rightController.setAttribute('visible', false);
 
-    console.log('Gaze cursor disabled in editor mode for better mouse interaction');
+    console.log('Gaze cursor visibility adjusted for device type in editor mode');
   }
 
   enableGazeCursorForExport() {
