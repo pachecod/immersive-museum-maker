@@ -3990,6 +3990,10 @@ class ModelEditor {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-physics-system@v4.0.1/dist/aframe-physics-system.min.js"></script>
     
+    <!-- Mobile Console for Debugging -->
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
+    
     <style>
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
         #scene { width: 100vw; height: 100vh; }
