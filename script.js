@@ -4511,7 +4511,7 @@ class ModelEditor {
 
 <body>
     <a-scene 
-        cursor="rayOrigin: mouse" 
+        cursor="rayOrigin: mouse; objects: .clickable" 
         sound-effects
         static-skybox>
         <!-- UI Overlays -->
