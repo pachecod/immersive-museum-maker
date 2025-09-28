@@ -29,7 +29,7 @@ Your project has been configured with:
 2. **Click "New repository"** (green button)
 3. **Repository settings:**
    - Name: `immersivemuseum-vr` (or your preferred name)
-   - Description: "Immersive Museum VR Experience for Syracuse University Agriquest"
+   - Description: "Immersive Museum VR Experience - Virtual Museum Creation Tool"
    - Visibility: Public (required for free Render hosting)
    - **DO NOT** initialize with README, .gitignore, or license (we already have these)
 4. **Click "Create repository"**

@@ -8,7 +8,7 @@ This program is free software: you can redistribute it and/or modify it under th
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License in the LICENSE file of this repository for more details.
 */
-// Agriquest Vegetable Museum - Main Script
+// Immersive Museum Maker - Main Script
 // Generated from Immersive Museum Architecture
 
 // Museum Configuration
@@ -6731,7 +6731,7 @@ Created: ${new Date().toLocaleString()}
     document.getElementById('slideshow-image2').value = '';
     document.getElementById('slideshow-image3').value = '';
     
-    document.getElementById('slideshow-slide1-text').value = 'Welcome to the Agriquest Garden Museum! Explore vegetables and garden tools in this interactive 3D exhibit. Click on the hotspots to learn more about each item.';
+    document.getElementById('slideshow-slide1-text').value = 'Welcome to the Immersive Museum! Explore exhibits and artifacts in this interactive 3D experience. Click on the hotspots to learn more about each item.';
     document.getElementById('slideshow-slide2-text').value = 'Wheelbarrows are essential garden tools that make transporting soil, plants, and materials much easier. They help gardeners work more efficiently.';
     document.getElementById('slideshow-slide3-text').value = 'Onions add flavor to countless dishes worldwide. They contain compounds that may help reduce inflammation and promote heart health.';
     
