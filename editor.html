@@ -677,7 +677,9 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY o
         // Use the same standalone HTML export as the user export
         try {
           if (window.modelEditor && typeof modelEditor.generateStandaloneHTML === 'function') {
-            const htmlContent = modelEditor.generateStandaloneHTML();
+            // Get the current config from the museum project
+            const currentConfig = window.museumConfig || (window.modelEditor.museumProject && window.modelEditor.museumProject.config);
+            const htmlContent = modelEditor.generateStandaloneHTML(currentConfig);
             if (htmlContent) {
               // Create a single standalone HTML file (same as user export)
               zip.file('museum-scene.html', htmlContent);
