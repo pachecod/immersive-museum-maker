@@ -336,8 +336,31 @@ AFRAME.registerComponent("spot", {
     
     // Handle 3D model animation if specified
     if (data.vegetableModel) {
-      const model = document.querySelector('#' + data.vegetableModel);
-      if (model && data.revealAnimation) {
+      // Handle both cases: with or without # prefix
+      const modelSelector = data.vegetableModel.startsWith('#') ? data.vegetableModel : '#' + data.vegetableModel;
+      console.log('🎬 Animation: Looking for model with selector:', modelSelector);
+      
+      // Look for the actual 3D model entity, not the asset item
+      let model = document.querySelector(modelSelector);
+      
+      // If we found an asset item, look for the actual model entity in the scene
+      if (model && model.tagName === 'A-ASSET-ITEM') {
+        console.log('🎬 Animation: Found asset item, looking for actual model entity...');
+        // The actual model entity should be inside an exhibit container
+        const exhibitContainers = document.querySelectorAll('[id*="exhibit"], [id*="room"]');
+        for (let container of exhibitContainers) {
+          const actualModel = container.querySelector(modelSelector);
+          if (actualModel && actualModel.tagName !== 'A-ASSET-ITEM') {
+            model = actualModel;
+            console.log('🎬 Animation: Found actual model entity:', model);
+            break;
+          }
+        }
+      }
+      
+      console.log('🎬 Animation: Final model:', model);
+      console.log('🎬 Animation: revealAnimation:', data.revealAnimation);
+      if (model && data.revealAnimation && model.tagName !== 'A-ASSET-ITEM') {
         const originalPosition = model.getAttribute("position");
         
         // Handle position as object or string
@@ -371,12 +394,14 @@ AFRAME.registerComponent("spot", {
         this.originalPosition = `${posX} ${posY} ${posZ}`;
         
         // Start new animations
+        console.log('🎬 Animation: Starting reveal animation to position:', `${posX} ${posY + 1} ${posZ}`);
         model.setAttribute("animation__reveal", {
           property: "position",
           to: `${posX} ${posY + 1} ${posZ}`,
           dur: 1000,
           easing: "easeOutElastic"
         });
+        console.log('🎬 Animation: Starting spin animation');
         model.setAttribute("animation__spin", {
           property: "rotation",
           to: "0 360 0",
@@ -567,7 +592,7 @@ AFRAME.registerComponent("enhanced-mobile-controls", {
     }
     
     var distance = this.data.speed * (deltaTime / 1000);
-    var moveMultiplier = this.numFingers === 1 ? 1 : -1; // One thumb forward, two thumbs backward
+    var moveMultiplier = this.numFingers === 1 ? -1 : 1; // One thumb forward, two thumbs backward
     
     var cameraEl = this.el.querySelector("[camera]");
     if (cameraEl) {
@@ -767,14 +792,24 @@ AFRAME.registerComponent('static-skybox', {
       console.log('Static skybox set to:', skyImage);
     }
     
-    // Create a static directional light (no movement)
+    // Create ambient light - use config values
+    this.ambientLight = document.createElement('a-entity');
+    this.ambientLight.setAttribute('light', {
+      type: 'ambient',
+      color: config?.environment?.lighting?.ambient?.color || '#BBB',
+      intensity: config?.environment?.lighting?.ambient?.intensity || 1
+    });
+    this.el.sceneEl.appendChild(this.ambientLight);
+    
+    // Create a static directional light (no movement) - use config values
     this.sunLight = document.createElement('a-entity');
     this.sunLight.setAttribute('light', {
       type: 'directional',
-      color: '#FFF',
-      intensity: 0.8
+      color: config?.environment?.lighting?.directional?.color || '#FFF',
+      intensity: config?.environment?.lighting?.directional?.intensity || 0.8,
+      castShadow: config?.environment?.lighting?.directional?.castShadow || true
     });
-    this.sunLight.setAttribute('position', '0 10 0');
+    this.sunLight.setAttribute('position', config?.environment?.lighting?.directional?.position || '0 10 0');
     this.el.sceneEl.appendChild(this.sunLight);
   }
 });
@@ -910,7 +945,11 @@ class MuseumProject {
     
     // Add a fallback check to ensure scene is visible
     setTimeout(() => {
-      this.ensureSceneVisibility();
+      const scene = document.querySelector('a-scene');
+      if (scene) {
+        scene.style.visibility = 'visible';
+        console.log('✅ Scene visibility ensured');
+      }
     }, 2000);
   }
 
@@ -1106,13 +1145,14 @@ class MuseumProject {
       existingSky.remove();
     }
     
-    // Lighting
+    // Create initial lighting
     const ambientLight = document.createElement('a-entity');
     ambientLight.setAttribute('light', {
       type: 'ambient',
       color: this.config.environment.lighting.ambient.color,
       intensity: this.config.environment.lighting.ambient.intensity
     });
+    ambientLight.setAttribute('id', 'editor-ambient-light');
     scene.appendChild(ambientLight);
     
     const directionalLight = document.createElement('a-entity');
@@ -1123,6 +1163,7 @@ class MuseumProject {
       castShadow: this.config.environment.lighting.directional.castShadow
     });
     directionalLight.setAttribute('position', this.config.environment.lighting.directional.position);
+    directionalLight.setAttribute('id', 'editor-directional-light');
     scene.appendChild(directionalLight);
     
     // Ground
@@ -1516,18 +1557,20 @@ class MuseumProject {
         console.log(`   Rotation: ${model.getAttribute('rotation')}`);
         
         // Fix transparency issues that sometimes occur with GLTF models
-        const mesh = model.getObject3D('mesh');
-        if (mesh) {
-          mesh.traverse((node) => {
-            if (node.isMesh) {
-              // Ensure materials are properly configured
-              if (node.material) {
-                node.material.transparent = false;
-                node.material.opacity = 1.0;
-                node.material.needsUpdate = true;
+        if (model.tagName === 'A-ENTITY') {
+          const mesh = model.getObject3D('mesh');
+          if (mesh) {
+            mesh.traverse((node) => {
+              if (node.isMesh) {
+                // Ensure materials are properly configured
+                if (node.material) {
+                  node.material.transparent = false;
+                  node.material.opacity = 1.0;
+                  node.material.needsUpdate = true;
+                }
               }
-            }
-          });
+            });
+          }
         }
         
         // Add a temporary position marker for debugging (red sphere)
@@ -1552,7 +1595,7 @@ class MuseumProject {
       // Timeout check for model loading
       setTimeout(() => {
         const modelElement = document.querySelector(`#${exhibit.model.id}`);
-        if (modelElement && !modelElement.getObject3D('mesh')) {
+        if (modelElement && modelElement.tagName === 'A-ENTITY' && !modelElement.getObject3D('mesh')) {
           console.warn(`⚠️ Model loading timeout: ${exhibit.model.id} (${exhibit.name})`);
           console.warn(`   Source: ${exhibit.model.src}`);
         }
@@ -1637,6 +1680,12 @@ class MuseumProject {
           additionalModelEntity.classList.add('additional-model');
           
           exhibitEntity.appendChild(additionalModelEntity);
+          
+          // Add manipulation gizmo for editor mode
+          if (window.modelEditor) {
+            this.createAdditionalModelGizmo(additionalModel.id);
+          }
+          
           console.log(`   ✅ Additional model added: ${additionalModel.id}`);
         });
       }
@@ -2104,6 +2153,19 @@ class ModelEditor {
 
     document.getElementById('reset-environment').addEventListener('click', () => {
       this.resetEnvironment();
+    });
+
+    // Lighting controls
+    document.getElementById('ambient-light-intensity').addEventListener('change', (e) => {
+      this.updateLightingIntensity('ambient', parseFloat(e.target.value));
+    });
+
+    document.getElementById('directional-light-intensity').addEventListener('change', (e) => {
+      this.updateLightingIntensity('directional', parseFloat(e.target.value));
+    });
+
+    document.getElementById('overall-brightness').addEventListener('change', (e) => {
+      this.updateOverallBrightness(parseFloat(e.target.value));
     });
 
     // Ambient audio control
@@ -2750,18 +2812,23 @@ class ModelEditor {
   }
 
   addAdditionalModel() {
+    console.log('addAdditionalModel called');
     if (!this.currentModel) {
+      console.log('No current model selected');
       this.showNotification('Please select a scene first', 'error');
       return;
     }
 
+    console.log('Current model:', this.currentModel);
     // Generate unique ID for the additional model
     const modelId = `additional_model_${Date.now()}`;
     const modelIndex = this.currentModel.exhibit.additionalModels ? this.currentModel.exhibit.additionalModels.length : 0;
+    console.log('Creating additional model with ID:', modelId, 'at index:', modelIndex);
 
     // Create additional model object
     const additionalModel = {
       id: modelId,
+      name: '',
       url: '',
       position: '0 0 0',
       rotation: '0 0 0',
@@ -2784,7 +2851,9 @@ class ModelEditor {
   }
 
   createAdditionalModelUI(model, index) {
+    console.log('createAdditionalModelUI called with:', model, 'index:', index);
     const container = document.getElementById('additional-models-container');
+    console.log('Container found:', container);
     
     const modelItem = document.createElement('div');
     modelItem.className = 'additional-model-item';
@@ -2793,19 +2862,94 @@ class ModelEditor {
 
     modelItem.innerHTML = `
       <h4>Additional Model ${index + 1}</h4>
+      
+      <div class="property-group">
+        <label>Model Name:</label>
+        <input type="text" class="additional-model-name" placeholder="Enter model name..." value="${model.name || ''}">
+      </div>
+      
       <div class="url-input-container">
         <input type="url" class="additional-model-url" placeholder="https://..." value="${model.url}">
         <button class="action-btn load-additional-model">Load</button>
         <button class="action-btn preview-additional-model">Preview</button>
         <button class="action-btn delete delete-additional-model">Delete</button>
       </div>
+      
+      <div class="property-group">
+        <label>Position</label>
+        <div class="position-inputs">
+          <div class="position-input">
+            <label>X</label>
+            <input type="number" step="0.1" value="${model.position.split(' ')[0]}">
+          </div>
+          <div class="position-input">
+            <label>Y</label>
+            <input type="number" step="0.1" value="${model.position.split(' ')[1]}">
+          </div>
+          <div class="position-input">
+            <label>Z</label>
+            <input type="number" step="0.1" value="${model.position.split(' ')[2]}">
+          </div>
+        </div>
+      </div>
+      
+      <div class="property-group">
+        <label>Rotation (degrees)</label>
+        <div class="position-inputs">
+          <div class="position-input">
+            <label>X</label>
+            <input type="number" step="1" value="${model.rotation.split(' ')[0]}">
+          </div>
+          <div class="position-input">
+            <label>Y</label>
+            <input type="number" step="1" value="${model.rotation.split(' ')[1]}">
+          </div>
+          <div class="position-input">
+            <label>Z</label>
+            <input type="number" step="1" value="${model.rotation.split(' ')[2]}">
+          </div>
+        </div>
+      </div>
+      
+      <div class="property-group">
+        <label>Scale</label>
+        <div class="scale-lock-container">
+          <input type="checkbox" id="scale-lock-${model.id}" checked>
+          <label for="scale-lock-${model.id}">Lock Scale</label>
+        </div>
+        <div class="position-inputs">
+          <div class="position-input">
+            <label>X</label>
+            <input type="number" step="0.1" value="${model.scale.split(' ')[0]}">
+          </div>
+          <div class="position-input">
+            <label>Y</label>
+            <input type="number" step="0.1" value="${model.scale.split(' ')[1]}">
+          </div>
+          <div class="position-input">
+            <label>Z</label>
+            <input type="number" step="0.1" value="${model.scale.split(' ')[2]}">
+          </div>
+        </div>
+      </div>
     `;
 
-    // Add event listeners
+    // Add the element to the DOM first
+    container.appendChild(modelItem);
+
+    // Now add event listeners after the element is in the DOM
+    const nameInput = modelItem.querySelector('.additional-model-name');
     const urlInput = modelItem.querySelector('.additional-model-url');
     const loadBtn = modelItem.querySelector('.load-additional-model');
     const previewBtn = modelItem.querySelector('.preview-additional-model');
     const deleteBtn = modelItem.querySelector('.delete-additional-model');
+    
+    console.log('Found buttons:', { loadBtn, previewBtn, deleteBtn });
+    console.log('Delete button element:', deleteBtn);
+
+    nameInput.addEventListener('input', (e) => {
+      this.updateAdditionalModelName(model.id, e.target.value);
+    });
 
     urlInput.addEventListener('input', (e) => {
       this.updateAdditionalModelUrl(model.id, e.target.value);
@@ -2820,33 +2964,236 @@ class ModelEditor {
     });
 
     deleteBtn.addEventListener('click', () => {
+      console.log('Delete button clicked for model:', model.id);
       this.deleteAdditionalModel(model.id);
     });
 
-    container.appendChild(modelItem);
+    // Add input event listeners using a more reliable approach
+    const allNumberInputs = modelItem.querySelectorAll('input[type="number"]');
+    const scaleLockCheckbox = modelItem.querySelector('#scale-lock-' + model.id);
+    console.log('🔥 DEBUGGING: Found all number inputs:', allNumberInputs.length);
+    console.log('🔥 DEBUGGING: Found scale lock checkbox:', scaleLockCheckbox);
+    console.log('🔥 DEBUGGING: Model item:', modelItem);
+    console.log('🔥 DEBUGGING: All number inputs:', allNumberInputs);
+    
+    // Position inputs (first 3)
+    for (let i = 0; i < 3; i++) {
+      if (allNumberInputs[i]) {
+        console.log('Adding event listener to position input', i, allNumberInputs[i]);
+        allNumberInputs[i].addEventListener('input', (e) => {
+          console.log('🔥 POSITION INPUT EVENT FIRED!', i, e.target.value);
+          console.log('Model ID:', model.id);
+          console.log('Current model:', this.currentModel);
+          this.updateAdditionalModelPosition(model.id, i, parseFloat(e.target.value) || 0);
+        });
+      }
+    }
+
+    // Rotation inputs (next 3)
+    for (let i = 3; i < 6; i++) {
+      if (allNumberInputs[i]) {
+        console.log('Adding event listener to rotation input', i-3, allNumberInputs[i]);
+        allNumberInputs[i].addEventListener('input', (e) => {
+          console.log('🔥 ROTATION INPUT EVENT FIRED!', i-3, e.target.value);
+          console.log('Model ID:', model.id);
+          this.updateAdditionalModelRotation(model.id, i-3, parseFloat(e.target.value) || 0);
+        });
+      }
+    }
+
+    // Scale inputs (next 3)
+    for (let i = 6; i < 9; i++) {
+      if (allNumberInputs[i]) {
+        console.log('Adding event listener to scale input', i-6, allNumberInputs[i]);
+        allNumberInputs[i].addEventListener('input', (e) => {
+          console.log('🔥 SCALE INPUT EVENT FIRED!', i-6, e.target.value);
+          console.log('Model ID:', model.id);
+          this.updateAdditionalModelScale(model.id, i-6, parseFloat(e.target.value) || 1, scaleLockCheckbox.checked);
+        });
+      }
+    }
+
+    // Add scale lock checkbox event listener
+    scaleLockCheckbox.addEventListener('change', (e) => {
+      this.updateAdditionalModelScaleLock(model.id, e.target.checked);
+    });
   }
 
-  updateAdditionalModelUrl(modelId, url) {
+  updateAdditionalModelName(modelId, name) {
     if (!this.currentModel || !this.currentModel.exhibit.additionalModels) return;
 
     const model = this.currentModel.exhibit.additionalModels.find(m => m.id === modelId);
     if (model) {
-      model.url = url;
+      model.name = name;
+      console.log(`Updated additional model ${modelId} name to: ${name}`);
+      
+      // Update the header text to show the custom name
+      const modelItem = document.querySelector(`[data-model-id="${modelId}"]`);
+      if (modelItem) {
+        const header = modelItem.querySelector('h4');
+        if (header) {
+          const index = modelItem.getAttribute('data-model-index');
+          if (name && name.trim()) {
+            header.textContent = name.trim();
+          } else {
+            header.textContent = `Additional Model ${parseInt(index) + 1}`;
+          }
+        }
+      }
     }
   }
 
-  loadAdditionalModel(modelId) {
+  updateAdditionalModelUrl(modelId, url) {
+    console.log('updateAdditionalModelUrl called:', { modelId, url });
+    if (!this.currentModel || !this.currentModel.exhibit.additionalModels) {
+      console.log('No current model or additional models found');
+      return;
+    }
+
+    const model = this.currentModel.exhibit.additionalModels.find(m => m.id === modelId);
+    if (model) {
+      model.url = url;
+      console.log('Updated model URL:', model);
+    } else {
+      console.log('Model not found:', modelId);
+    }
+  }
+
+  updateAdditionalModelPosition(modelId, axisIndex, value) {
+    console.log('updateAdditionalModelPosition called:', { modelId, axisIndex, value });
+    
+    if (!this.currentModel || !this.currentModel.exhibit.additionalModels) {
+      console.log('No current model or additional models found');
+      return;
+    }
+
+    const model = this.currentModel.exhibit.additionalModels.find(m => m.id === modelId);
+    if (model) {
+      console.log('Found model, updating position:', model);
+      const pos = model.position.split(' ').map(Number);
+      pos[axisIndex] = value;
+      model.position = pos.join(' ');
+      
+      console.log('New position:', model.position);
+      
+      // Update the 3D scene
+      this.updateAdditionalModelInScene(model);
+      this.updateAdditionalModelGizmo(modelId);
+    } else {
+      console.log('Model not found:', modelId);
+    }
+  }
+
+  updateAdditionalModelRotation(modelId, axisIndex, value) {
     if (!this.currentModel || !this.currentModel.exhibit.additionalModels) return;
 
     const model = this.currentModel.exhibit.additionalModels.find(m => m.id === modelId);
+    if (model) {
+      const rot = model.rotation.split(' ').map(Number);
+      rot[axisIndex] = value;
+      model.rotation = rot.join(' ');
+      
+      // Update the 3D scene
+      this.updateAdditionalModelInScene(model);
+    }
+  }
+
+  updateAdditionalModelScale(modelId, axisIndex, value, isLocked) {
+    if (!this.currentModel || !this.currentModel.exhibit.additionalModels) return;
+
+    const model = this.currentModel.exhibit.additionalModels.find(m => m.id === modelId);
+    if (!model) return;
+
+    const scale = model.scale.split(' ').map(Number);
+    
+    if (isLocked) {
+      // If scale is locked, update all axes to the same value
+      scale[0] = scale[1] = scale[2] = value;
+      
+      // Update all scale inputs in the UI to show the locked value
+      const modelItem = document.querySelector(`[data-model-id="${modelId}"]`);
+      if (modelItem) {
+        const scaleInputs = modelItem.querySelectorAll('.property-group:nth-of-type(5) .position-input input');
+        scaleInputs.forEach(input => {
+          input.value = value;
+        });
+      }
+      
+      console.log(`Scale locked update for model ${modelId}: all axes set to ${value}`);
+    } else {
+      // If scale is unlocked, update only the specific axis
+      scale[axisIndex] = value;
+      console.log(`Scale unlocked update for model ${modelId}: axis ${axisIndex} set to ${value}`);
+    }
+    
+    model.scale = scale.join(' ');
+    
+    // Update the 3D scene
+    this.updateAdditionalModelInScene(model);
+  }
+
+  updateAdditionalModelScaleLock(modelId, isLocked) {
+    if (!this.currentModel || !this.currentModel.exhibit.additionalModels) return;
+
+    const model = this.currentModel.exhibit.additionalModels.find(m => m.id === modelId);
+    if (!model) return;
+
+    // Update the UI to reflect locked state
+    const modelItem = document.querySelector(`[data-model-id="${modelId}"]`);
+    if (modelItem) {
+      const scaleInputs = modelItem.querySelectorAll('.property-group:nth-of-type(5) .position-input input');
+      
+      if (isLocked) {
+        // When locking, use the X scale value for all axes
+        const scale = model.scale.split(' ').map(Number);
+        const lockedValue = scale[0];
+        scale[0] = scale[1] = scale[2] = lockedValue;
+        model.scale = scale.join(' ');
+        
+        // Update all inputs to show the locked value
+        scaleInputs.forEach(input => {
+          input.value = lockedValue;
+        });
+        
+        // Disable Y and Z inputs when locked
+        if (scaleInputs[1]) scaleInputs[1].disabled = true;
+        if (scaleInputs[2]) scaleInputs[2].disabled = true;
+        
+        console.log(`Scale locked for model ${modelId} with value ${lockedValue}`);
+      } else {
+        // When unlocking, enable all inputs
+        scaleInputs.forEach(input => {
+          input.disabled = false;
+        });
+        
+        console.log(`Scale unlocked for model ${modelId}`);
+      }
+    }
+    
+    // Update the 3D scene
+    this.updateAdditionalModelInScene(model);
+  }
+
+  loadAdditionalModel(modelId) {
+    console.log('loadAdditionalModel called:', { modelId });
+    if (!this.currentModel || !this.currentModel.exhibit.additionalModels) {
+      console.log('No current model or additional models found');
+      return;
+    }
+
+    const model = this.currentModel.exhibit.additionalModels.find(m => m.id === modelId);
+    console.log('Found model:', model);
     if (!model || !model.url) {
+      console.log('Model not found or no URL provided');
       this.showNotification('Please enter a model URL', 'error');
       return;
     }
 
     // Create asset if it doesn't exist
     let assetElement = document.querySelector(`#${modelId}`);
+    console.log('Looking for existing asset:', modelId, assetElement);
     if (!assetElement) {
+      console.log('Creating new asset for model:', modelId);
       assetElement = document.createElement('a-asset-item');
       assetElement.id = modelId;
       assetElement.setAttribute('type', 'gltf');
@@ -2855,11 +3202,17 @@ class ModelEditor {
       const assets = document.querySelector('a-assets');
       if (assets) {
         assets.appendChild(assetElement);
+        console.log('Asset added to a-assets:', assetElement);
+      } else {
+        console.log('a-assets element not found!');
       }
+    } else {
+      console.log('Using existing asset:', assetElement);
     }
 
     // Update asset URL
     assetElement.setAttribute('src', model.url);
+    console.log('Asset URL set to:', model.url);
 
     // Create or update model entity in scene
     this.createAdditionalModelEntity(model);
@@ -2868,18 +3221,26 @@ class ModelEditor {
   }
 
   createAdditionalModelEntity(model) {
+    console.log('createAdditionalModelEntity called:', model);
+    console.log('Current model exhibit ID:', this.currentModel.exhibit.id);
     const exhibitEntity = document.getElementById(this.currentModel.exhibit.id);
-    if (!exhibitEntity) return;
+    console.log('Found exhibit entity:', exhibitEntity);
+    if (!exhibitEntity) {
+      console.log('Exhibit entity not found:', this.currentModel.exhibit.id);
+      console.log('Available exhibit entities:', document.querySelectorAll('[id*="exhibit"]'));
+      return;
+    }
 
     // Remove existing entity if it exists
-    const existingEntity = exhibitEntity.querySelector(`#${model.id}`);
+    const existingEntity = exhibitEntity.querySelector(`#model-${model.id}`);
     if (existingEntity) {
+      console.log('Removing existing entity');
       existingEntity.remove();
     }
 
     // Create new entity
     const modelEntity = document.createElement('a-entity');
-    modelEntity.id = model.id;
+    modelEntity.id = `model-${model.id}`; // Different from asset ID
     modelEntity.setAttribute('gltf-model', `#${model.id}`);
     modelEntity.setAttribute('position', model.position);
     modelEntity.setAttribute('rotation', model.rotation);
@@ -2887,7 +3248,24 @@ class ModelEditor {
     modelEntity.setAttribute('visible', model.visible);
     modelEntity.classList.add('additional-model');
 
+    console.log('Created model entity:', modelEntity);
+    console.log('Model entity attributes:', {
+      id: modelEntity.id,
+      gltfModel: modelEntity.getAttribute('gltf-model'),
+      position: modelEntity.getAttribute('position'),
+      rotation: modelEntity.getAttribute('rotation'),
+      scale: modelEntity.getAttribute('scale'),
+      visible: modelEntity.getAttribute('visible')
+    });
+    console.log('Appending model entity to exhibit:', exhibitEntity);
     exhibitEntity.appendChild(modelEntity);
+    console.log('Model entity appended successfully');
+    console.log('Exhibit entity children after append:', exhibitEntity.children.length);
+
+    // Add manipulation gizmo for editor mode
+    if (window.modelEditor) {
+      this.createAdditionalModelGizmo(model.id);
+    }
   }
 
   previewAdditionalModel(modelId) {
@@ -2921,9 +3299,14 @@ class ModelEditor {
   }
 
   deleteAdditionalModel(modelId) {
-    if (!this.currentModel || !this.currentModel.exhibit.additionalModels) return;
+    console.log('deleteAdditionalModel called:', modelId);
+    if (!this.currentModel || !this.currentModel.exhibit.additionalModels) {
+      console.log('No current model or additional models found');
+      return;
+    }
 
     if (confirm('Are you sure you want to delete this additional model?')) {
+      console.log('User confirmed deletion');
       // Remove from config
       const modelIndex = this.currentModel.exhibit.additionalModels.findIndex(m => m.id === modelId);
       if (modelIndex !== -1) {
@@ -2933,10 +3316,22 @@ class ModelEditor {
       // Remove from scene
       const exhibitEntity = document.getElementById(this.currentModel.exhibit.id);
       if (exhibitEntity) {
-        const modelEntity = exhibitEntity.querySelector(`#${modelId}`);
+        const modelEntity = exhibitEntity.querySelector(`#model-${modelId}`);
+        console.log('Looking for model entity:', `#model-${modelId}`, modelEntity);
         if (modelEntity) {
+          console.log('Removing model entity from scene');
           modelEntity.remove();
+        } else {
+          console.log('Model entity not found in scene');
         }
+      } else {
+        console.log('Exhibit entity not found:', this.currentModel.exhibit.id);
+      }
+
+      // Remove gizmo
+      const gizmo = document.querySelector(`#gizmo-additional-model-${modelId}`);
+      if (gizmo) {
+        gizmo.remove();
       }
 
       // Remove asset
@@ -2947,8 +3342,12 @@ class ModelEditor {
 
       // Remove UI element
       const uiElement = document.querySelector(`[data-model-id="${modelId}"]`);
+      console.log('Looking for UI element:', `[data-model-id="${modelId}"]`, uiElement);
       if (uiElement) {
+        console.log('Removing UI element');
         uiElement.remove();
+      } else {
+        console.log('UI element not found');
       }
 
       // Renumber remaining models
@@ -4131,7 +4530,7 @@ class ModelEditor {
                 }
                 
                 var distance = this.data.speed * (deltaTime / 1000);
-                var moveMultiplier = this.numFingers === 1 ? 1 : -1; // One thumb forward, two thumbs backward
+                var moveMultiplier = this.numFingers === 1 ? -1 : 1; // One thumb forward, two thumbs backward
                 
                 var cameraEl = this.el.querySelector("[camera]");
                 if (cameraEl) {
@@ -4521,14 +4920,24 @@ class ModelEditor {
                     console.log('Static skybox set to:', skyImage);
                 }
                 
-                // Create a static directional light (no movement)
+                // Create ambient light - use config values
+                this.ambientLight = document.createElement('a-entity');
+                this.ambientLight.setAttribute('light', {
+                    type: 'ambient',
+                    color: config?.environment?.lighting?.ambient?.color || '#BBB',
+                    intensity: config?.environment?.lighting?.ambient?.intensity || 1
+                });
+                this.el.sceneEl.appendChild(this.ambientLight);
+                
+                // Create a static directional light (no movement) - use config values
                 this.sunLight = document.createElement('a-entity');
                 this.sunLight.setAttribute('light', {
                     type: 'directional',
-                    color: '#FFF',
-                    intensity: 0.8
+                    color: config?.environment?.lighting?.directional?.color || '#FFF',
+                    intensity: config?.environment?.lighting?.directional?.intensity || 0.8,
+                    castShadow: config?.environment?.lighting?.directional?.castShadow || true
                 });
-                this.sunLight.setAttribute('position', '0 10 0');
+                this.sunLight.setAttribute('position', config?.environment?.lighting?.directional?.position || '0 10 0');
                 this.el.sceneEl.appendChild(this.sunLight);
             }
         });
@@ -4540,6 +4949,8 @@ class ModelEditor {
         cursor="rayOrigin: mouse; objects: .clickable" 
         sound-effects
         static-skybox>
+        <!-- Lighting handled by static-skybox component -->
+        
         <!-- UI Overlays -->
         <div class="museum-info">Welcome to the ${config.name || 'Immersive Museum'}</div>
         
@@ -4606,8 +5017,6 @@ class ModelEditor {
         </a-assets>
 
         <!-- Environment -->
-        <a-entity light="type: ambient; color: #BBB; intensity: 1"></a-entity>
-        <a-entity light="type: directional; color: #FFF; intensity: 1; castShadow: true" position="-1 1 0"></a-entity>
         
         <a-plane
             width="100"
@@ -5000,6 +5409,9 @@ class ModelEditor {
                       shadow="cast: true; receive: true">
             </a-entity>
             
+            <!-- Additional Models -->
+            ${this.generateAdditionalModelsHTML(exhibit)}
+            
             <!-- Model Label -->
             <a-entity id="${modelId}-label-container" position="0 3 0" visible="false">
                 <a-text value="${exhibit.name || 'Exhibit'}" 
@@ -5023,6 +5435,31 @@ class ModelEditor {
     }
     
     return exhibitsHTML;
+  }
+
+  generateAdditionalModelsHTML(exhibit) {
+    let additionalModelsHTML = '';
+    
+    if (exhibit.additionalModels && exhibit.additionalModels.length > 0) {
+      exhibit.additionalModels.forEach(additionalModel => {
+        console.log(`Export: Adding additional model ${additionalModel.id} to exhibit ${exhibit.name}`);
+        
+        additionalModelsHTML += `
+            <!-- Additional Model: ${additionalModel.id} -->
+            <a-entity id="model-${additionalModel.id}" 
+                      gltf-model="${additionalModel.url}" 
+                      position="${additionalModel.position}" 
+                      scale="${additionalModel.scale}" 
+                      rotation="${additionalModel.rotation}"
+                      visible="${additionalModel.visible}"
+                      shadow="cast: true; receive: true"
+                      class="additional-model">
+            </a-entity>
+`;
+      });
+    }
+    
+    return additionalModelsHTML;
   }
 
   rebuildSceneFromEditorFields() {
@@ -5981,6 +6418,9 @@ Created: ${new Date().toLocaleString()}
       textarea.value = '';
     });
     
+    // Populate lighting controls
+    this.populateLightingControls();
+    
     // Re-enable real-time updates after a short delay
     setTimeout(() => {
       this.realtimeUpdatesEnabled = true;
@@ -5988,6 +6428,26 @@ Created: ${new Date().toLocaleString()}
     }, 1000);
     
     console.log('Form cleared and real-time updates temporarily disabled');
+  }
+
+  populateLightingControls() {
+    if (!this.museumProject?.config?.environment?.lighting) return;
+
+    const lighting = this.museumProject.config.environment.lighting;
+    
+    // Set ambient light intensity
+    const ambientIntensity = lighting.ambient?.intensity || 1;
+    document.getElementById('ambient-light-intensity').value = ambientIntensity;
+    
+    // Set directional light intensity
+    const directionalIntensity = lighting.directional?.intensity || 1;
+    document.getElementById('directional-light-intensity').value = directionalIntensity;
+    
+    // Set overall brightness (average of both lights)
+    const overallBrightness = (ambientIntensity + directionalIntensity) / 2;
+    document.getElementById('overall-brightness').value = overallBrightness;
+    
+    console.log('Lighting controls populated:', { ambientIntensity, directionalIntensity, overallBrightness });
   }
 
   clearFormValues() {
@@ -6370,6 +6830,14 @@ Created: ${new Date().toLocaleString()}
         console.log('  Form field value after setting:', document.getElementById('audioonion-url').value);
       }
     }
+    
+    // Load lighting controls
+    this.populateLightingControls();
+    
+    // Apply lighting to the editor scene
+    this.updateSceneLighting();
+    
+    console.log('✅ Environment config loaded successfully');
   }
 
   uploadPanoramaImage() {
@@ -6786,6 +7254,117 @@ Created: ${new Date().toLocaleString()}
     this.refreshSoundEffects();
     
     this.showNotification('Environment updated successfully!', 'success');
+  }
+
+  updateLightingIntensity(lightType, intensity) {
+    if (!this.museumProject?.config) return;
+
+    const config = this.museumProject.config;
+    if (!config.environment) config.environment = {};
+    if (!config.environment.lighting) config.environment.lighting = {};
+    if (!config.environment.lighting[lightType]) config.environment.lighting[lightType] = {};
+
+    config.environment.lighting[lightType].intensity = intensity;
+
+    // Update the scene lighting in real-time
+    this.updateSceneLighting();
+  }
+
+  updateOverallBrightness(brightness) {
+    if (!this.museumProject?.config) return;
+
+    const config = this.museumProject.config;
+    if (!config.environment) config.environment = {};
+    if (!config.environment.lighting) config.environment.lighting = {};
+
+    // Apply brightness multiplier to both ambient and directional lights
+    const ambientIntensity = brightness * 0.6; // Ambient is typically lower
+    const directionalIntensity = brightness * 0.8; // Directional is typically higher
+
+    if (!config.environment.lighting.ambient) config.environment.lighting.ambient = {};
+    if (!config.environment.lighting.directional) config.environment.lighting.directional = {};
+
+    config.environment.lighting.ambient.intensity = ambientIntensity;
+    config.environment.lighting.directional.intensity = directionalIntensity;
+
+    // Update the scene lighting in real-time
+    this.updateSceneLighting();
+
+    // Update the individual inputs to reflect the changes
+    document.getElementById('ambient-light-intensity').value = ambientIntensity;
+    document.getElementById('directional-light-intensity').value = directionalIntensity;
+  }
+
+  updateSceneLighting() {
+    const scene = document.querySelector('a-scene');
+    if (!scene) return;
+
+    const config = this.museumProject?.config;
+    if (!config?.environment?.lighting) return;
+
+    console.log('Updating scene lighting with config:', config.environment.lighting);
+
+    // Find or update existing ambient light
+    let ambientLight = scene.querySelector('#editor-ambient-light');
+    if (!ambientLight) {
+      ambientLight = document.createElement('a-entity');
+      ambientLight.setAttribute('id', 'editor-ambient-light');
+      scene.appendChild(ambientLight);
+    }
+
+    // Update ambient light
+    ambientLight.setAttribute('light', {
+      type: 'ambient',
+      color: config.environment.lighting.ambient.color || '#BBB',
+      intensity: config.environment.lighting.ambient.intensity || 1
+    });
+    console.log('Updated ambient light:', ambientLight.getAttribute('light'));
+
+    // Find or update existing directional light
+    let directionalLight = scene.querySelector('#editor-directional-light');
+    if (!directionalLight) {
+      directionalLight = document.createElement('a-entity');
+      directionalLight.setAttribute('id', 'editor-directional-light');
+      scene.appendChild(directionalLight);
+    }
+
+    // Update directional light
+    directionalLight.setAttribute('light', {
+      type: 'directional',
+      color: config.environment.lighting.directional.color || '#FFF',
+      intensity: config.environment.lighting.directional.intensity || 1,
+      castShadow: config.environment.lighting.directional.castShadow || true
+    });
+    directionalLight.setAttribute('position', config.environment.lighting.directional.position || '-1 1 0');
+    console.log('Updated directional light:', directionalLight.getAttribute('light'));
+
+    // Also update the static-skybox component's lighting if it exists
+    const staticSkybox = scene.querySelector('[static-skybox]');
+    if (staticSkybox && staticSkybox.components['static-skybox']) {
+      const component = staticSkybox.components['static-skybox'];
+      
+      // Update ambient light
+      if (component.ambientLight) {
+        component.ambientLight.setAttribute('light', {
+          type: 'ambient',
+          color: config.environment.lighting.ambient.color || '#BBB',
+          intensity: config.environment.lighting.ambient.intensity || 1
+        });
+        console.log('Updated static-skybox ambient light');
+      }
+      
+      // Update directional light
+      if (component.sunLight) {
+        component.sunLight.setAttribute('light', {
+          type: 'directional',
+          color: config.environment.lighting.directional.color || '#FFF',
+          intensity: config.environment.lighting.directional.intensity || 1,
+          castShadow: config.environment.lighting.directional.castShadow || true
+        });
+        component.sunLight.setAttribute('position', config.environment.lighting.directional.position || '-1 1 0');
+        console.log('Updated static-skybox directional light');
+      }
+    }
   }
 
   updateSceneEnvironment(panoramaUrl, groundUrl) {
@@ -7543,6 +8122,382 @@ Created: ${new Date().toLocaleString()}
   }
 
   // Gizmo creation and manipulation functions
+  createAdditionalModelGizmo(modelId) {
+    const scene = document.querySelector('a-scene');
+    if (!scene) return;
+
+    // Remove existing gizmo if it exists
+    const existingGizmo = document.querySelector(`#gizmo-additional-model-${modelId}`);
+    if (existingGizmo) {
+      existingGizmo.remove();
+    }
+
+    // Get the model entity to position the gizmo
+    const modelEntity = document.getElementById(`model-${modelId}`);
+    if (!modelEntity) return;
+
+    const position = modelEntity.getAttribute('position');
+    const gizmo = document.createElement('a-entity');
+    gizmo.setAttribute('id', `gizmo-additional-model-${modelId}`);
+    gizmo.setAttribute('position', position);
+    gizmo.classList.add('manipulation-gizmo');
+    gizmo.setAttribute('data-gizmo-mode', 'position'); // Default to position mode
+
+    // Create mode indicator
+    const modeIndicator = document.createElement('a-text');
+    modeIndicator.setAttribute('value', 'POS');
+    modeIndicator.setAttribute('position', '0 2 0');
+    modeIndicator.setAttribute('align', 'center');
+    modeIndicator.setAttribute('color', '#ffffff');
+    modeIndicator.setAttribute('data-model-id', modelId);
+    modeIndicator.classList.add('gizmo-mode-indicator');
+    gizmo.appendChild(modeIndicator);
+
+    // POSITION GIZMOS (Arrows)
+    this.createPositionGizmos(gizmo, modelId);
+    
+    // ROTATION GIZMOS (Rings) - initially hidden
+    this.createRotationGizmos(gizmo, modelId);
+    
+    // SCALE GIZMOS (Boxes) - initially hidden
+    this.createScaleGizmos(gizmo, modelId);
+
+    scene.appendChild(gizmo);
+
+    // Add click handlers for manipulation
+    this.addGizmoClickHandlers(gizmo, 'additional-model', modelId);
+    
+    // Add mode switching
+    this.addGizmoModeSwitching(gizmo, modelId);
+  }
+
+  createPositionGizmos(gizmo, modelId) {
+    // X+ axis arrow (red)
+    const xArrow = document.createElement('a-cone');
+    xArrow.setAttribute('position', '1 0 0');
+    xArrow.setAttribute('rotation', '0 0 -90');
+    xArrow.setAttribute('radius-bottom', '0.1');
+    xArrow.setAttribute('height', '0.5');
+    xArrow.setAttribute('material', 'color: #ff0000');
+    xArrow.setAttribute('data-axis', 'x+');
+    xArrow.setAttribute('data-model-id', modelId);
+    xArrow.setAttribute('data-gizmo-type', 'position');
+    xArrow.classList.add('gizmo-arrow', 'gizmo-position');
+    gizmo.appendChild(xArrow);
+
+    // X- axis arrow (dark red)
+    const xArrowNeg = document.createElement('a-cone');
+    xArrowNeg.setAttribute('position', '-1 0 0');
+    xArrowNeg.setAttribute('rotation', '0 0 90');
+    xArrowNeg.setAttribute('radius-bottom', '0.1');
+    xArrowNeg.setAttribute('height', '0.5');
+    xArrowNeg.setAttribute('material', 'color: #cc0000');
+    xArrowNeg.setAttribute('data-axis', 'x-');
+    xArrowNeg.setAttribute('data-model-id', modelId);
+    xArrowNeg.setAttribute('data-gizmo-type', 'position');
+    xArrowNeg.classList.add('gizmo-arrow', 'gizmo-position');
+    gizmo.appendChild(xArrowNeg);
+
+    // Y+ axis arrow (green)
+    const yArrow = document.createElement('a-cone');
+    yArrow.setAttribute('position', '0 1 0');
+    yArrow.setAttribute('radius-bottom', '0.1');
+    yArrow.setAttribute('height', '0.5');
+    yArrow.setAttribute('material', 'color: #00ff00');
+    yArrow.setAttribute('data-axis', 'y+');
+    yArrow.setAttribute('data-model-id', modelId);
+    yArrow.setAttribute('data-gizmo-type', 'position');
+    yArrow.classList.add('gizmo-arrow', 'gizmo-position');
+    gizmo.appendChild(yArrow);
+
+    // Y- axis arrow (dark green)
+    const yArrowNeg = document.createElement('a-cone');
+    yArrowNeg.setAttribute('position', '0 -1 0');
+    yArrowNeg.setAttribute('rotation', '0 0 180');
+    yArrowNeg.setAttribute('radius-bottom', '0.1');
+    yArrowNeg.setAttribute('height', '0.5');
+    yArrowNeg.setAttribute('material', 'color: #00cc00');
+    yArrowNeg.setAttribute('data-axis', 'y-');
+    yArrowNeg.setAttribute('data-model-id', modelId);
+    yArrowNeg.setAttribute('data-gizmo-type', 'position');
+    yArrowNeg.classList.add('gizmo-arrow', 'gizmo-position');
+    gizmo.appendChild(yArrowNeg);
+
+    // Z+ axis arrow (blue)
+    const zArrow = document.createElement('a-cone');
+    zArrow.setAttribute('position', '0 0 1');
+    zArrow.setAttribute('rotation', '90 0 0');
+    zArrow.setAttribute('radius-bottom', '0.1');
+    zArrow.setAttribute('height', '0.5');
+    zArrow.setAttribute('material', 'color: #0000ff');
+    zArrow.setAttribute('data-axis', 'z+');
+    zArrow.setAttribute('data-model-id', modelId);
+    zArrow.setAttribute('data-gizmo-type', 'position');
+    zArrow.classList.add('gizmo-arrow', 'gizmo-position');
+    gizmo.appendChild(zArrow);
+
+    // Z- axis arrow (dark blue)
+    const zArrowNeg = document.createElement('a-cone');
+    zArrowNeg.setAttribute('position', '0 0 -1');
+    zArrowNeg.setAttribute('rotation', '-90 0 0');
+    zArrowNeg.setAttribute('radius-bottom', '0.1');
+    zArrowNeg.setAttribute('height', '0.5');
+    zArrowNeg.setAttribute('material', 'color: #0000cc');
+    zArrowNeg.setAttribute('data-axis', 'z-');
+    zArrowNeg.setAttribute('data-model-id', modelId);
+    zArrowNeg.setAttribute('data-gizmo-type', 'position');
+    zArrowNeg.classList.add('gizmo-arrow', 'gizmo-position');
+    gizmo.appendChild(zArrowNeg);
+  }
+
+  createRotationGizmos(gizmo, modelId) {
+    // X-axis rotation ring (red)
+    const xRing = document.createElement('a-torus');
+    xRing.setAttribute('position', '0 0 0');
+    xRing.setAttribute('rotation', '0 0 90');
+    xRing.setAttribute('radius', '1.2');
+    xRing.setAttribute('radius-tubular', '0.05');
+    xRing.setAttribute('material', 'color: #ff0000; opacity: 0.6');
+    xRing.setAttribute('data-axis', 'x');
+    xRing.setAttribute('data-model-id', modelId);
+    xRing.setAttribute('data-gizmo-type', 'rotation');
+    xRing.classList.add('gizmo-ring', 'gizmo-rotation');
+    xRing.setAttribute('visible', 'false');
+    gizmo.appendChild(xRing);
+
+    // Y-axis rotation ring (green)
+    const yRing = document.createElement('a-torus');
+    yRing.setAttribute('position', '0 0 0');
+    yRing.setAttribute('rotation', '0 0 0');
+    yRing.setAttribute('radius', '1.2');
+    yRing.setAttribute('radius-tubular', '0.05');
+    yRing.setAttribute('material', 'color: #00ff00; opacity: 0.6');
+    yRing.setAttribute('data-axis', 'y');
+    yRing.setAttribute('data-model-id', modelId);
+    yRing.setAttribute('data-gizmo-type', 'rotation');
+    yRing.classList.add('gizmo-ring', 'gizmo-rotation');
+    yRing.setAttribute('visible', 'false');
+    gizmo.appendChild(yRing);
+
+    // Z-axis rotation ring (blue)
+    const zRing = document.createElement('a-torus');
+    zRing.setAttribute('position', '0 0 0');
+    zRing.setAttribute('rotation', '90 0 0');
+    zRing.setAttribute('radius', '1.2');
+    zRing.setAttribute('radius-tubular', '0.05');
+    zRing.setAttribute('material', 'color: #0000ff; opacity: 0.6');
+    zRing.setAttribute('data-axis', 'z');
+    zRing.setAttribute('data-model-id', modelId);
+    zRing.setAttribute('data-gizmo-type', 'rotation');
+    zRing.classList.add('gizmo-ring', 'gizmo-rotation');
+    zRing.setAttribute('visible', 'false');
+    gizmo.appendChild(zRing);
+  }
+
+  createScaleGizmos(gizmo, modelId) {
+    // X+ scale box (red)
+    const xScale = document.createElement('a-box');
+    xScale.setAttribute('position', '1.5 0 0');
+    xScale.setAttribute('width', '0.2');
+    xScale.setAttribute('height', '0.2');
+    xScale.setAttribute('depth', '0.2');
+    xScale.setAttribute('material', 'color: #ff0000');
+    xScale.setAttribute('data-axis', 'x+');
+    xScale.setAttribute('data-model-id', modelId);
+    xScale.setAttribute('data-gizmo-type', 'scale');
+    xScale.classList.add('gizmo-box', 'gizmo-scale');
+    xScale.setAttribute('visible', 'false');
+    gizmo.appendChild(xScale);
+
+    // X- scale box (dark red)
+    const xScaleNeg = document.createElement('a-box');
+    xScaleNeg.setAttribute('position', '-1.5 0 0');
+    xScaleNeg.setAttribute('width', '0.2');
+    xScaleNeg.setAttribute('height', '0.2');
+    xScaleNeg.setAttribute('depth', '0.2');
+    xScaleNeg.setAttribute('material', 'color: #cc0000');
+    xScaleNeg.setAttribute('data-axis', 'x-');
+    xScaleNeg.setAttribute('data-model-id', modelId);
+    xScaleNeg.setAttribute('data-gizmo-type', 'scale');
+    xScaleNeg.classList.add('gizmo-box', 'gizmo-scale');
+    xScaleNeg.setAttribute('visible', 'false');
+    gizmo.appendChild(xScaleNeg);
+
+    // Y+ scale box (green)
+    const yScale = document.createElement('a-box');
+    yScale.setAttribute('position', '0 1.5 0');
+    yScale.setAttribute('width', '0.2');
+    yScale.setAttribute('height', '0.2');
+    yScale.setAttribute('depth', '0.2');
+    yScale.setAttribute('material', 'color: #00ff00');
+    yScale.setAttribute('data-axis', 'y+');
+    yScale.setAttribute('data-model-id', modelId);
+    yScale.setAttribute('data-gizmo-type', 'scale');
+    yScale.classList.add('gizmo-box', 'gizmo-scale');
+    yScale.setAttribute('visible', 'false');
+    gizmo.appendChild(yScale);
+
+    // Y- scale box (dark green)
+    const yScaleNeg = document.createElement('a-box');
+    yScaleNeg.setAttribute('position', '0 -1.5 0');
+    yScaleNeg.setAttribute('width', '0.2');
+    yScaleNeg.setAttribute('height', '0.2');
+    yScaleNeg.setAttribute('depth', '0.2');
+    yScaleNeg.setAttribute('material', 'color: #00cc00');
+    yScaleNeg.setAttribute('data-axis', 'y-');
+    yScaleNeg.setAttribute('data-model-id', modelId);
+    yScaleNeg.setAttribute('data-gizmo-type', 'scale');
+    yScaleNeg.classList.add('gizmo-box', 'gizmo-scale');
+    yScaleNeg.setAttribute('visible', 'false');
+    gizmo.appendChild(yScaleNeg);
+
+    // Z+ scale box (blue)
+    const zScale = document.createElement('a-box');
+    zScale.setAttribute('position', '0 0 1.5');
+    zScale.setAttribute('width', '0.2');
+    zScale.setAttribute('height', '0.2');
+    zScale.setAttribute('depth', '0.2');
+    zScale.setAttribute('material', 'color: #0000ff');
+    zScale.setAttribute('data-axis', 'z+');
+    zScale.setAttribute('data-model-id', modelId);
+    zScale.setAttribute('data-gizmo-type', 'scale');
+    zScale.classList.add('gizmo-box', 'gizmo-scale');
+    zScale.setAttribute('visible', 'false');
+    gizmo.appendChild(zScale);
+
+    // Z- scale box (dark blue)
+    const zScaleNeg = document.createElement('a-box');
+    zScaleNeg.setAttribute('position', '0 0 -1.5');
+    zScaleNeg.setAttribute('width', '0.2');
+    zScaleNeg.setAttribute('height', '0.2');
+    zScaleNeg.setAttribute('depth', '0.2');
+    zScaleNeg.setAttribute('material', 'color: #0000cc');
+    zScaleNeg.setAttribute('data-axis', 'z-');
+    zScaleNeg.setAttribute('data-model-id', modelId);
+    zScaleNeg.setAttribute('data-gizmo-type', 'scale');
+    zScaleNeg.classList.add('gizmo-box', 'gizmo-scale');
+    zScaleNeg.setAttribute('visible', 'false');
+    gizmo.appendChild(zScaleNeg);
+  }
+
+  addGizmoModeSwitching(gizmo, modelId) {
+    // Add mode switching buttons
+    const modeButtons = document.createElement('a-entity');
+    modeButtons.setAttribute('position', '0 2.5 0');
+    modeButtons.setAttribute('data-model-id', modelId);
+    modeButtons.classList.add('gizmo-mode-buttons');
+
+    // Position mode button
+    const posButton = document.createElement('a-box');
+    posButton.setAttribute('position', '-0.3 0 0');
+    posButton.setAttribute('width', '0.2');
+    posButton.setAttribute('height', '0.1');
+    posButton.setAttribute('depth', '0.05');
+    posButton.setAttribute('material', 'color: #ffffff');
+    posButton.setAttribute('data-mode', 'position');
+    posButton.setAttribute('data-model-id', modelId);
+    posButton.classList.add('gizmo-mode-button', 'active');
+    modeButtons.appendChild(posButton);
+
+    const posText = document.createElement('a-text');
+    posText.setAttribute('value', 'POS');
+    posText.setAttribute('position', '-0.3 0 0.05');
+    posText.setAttribute('align', 'center');
+    posText.setAttribute('color', '#000000');
+    posText.setAttribute('scale', '0.5 0.5 0.5');
+    modeButtons.appendChild(posText);
+
+    // Rotation mode button
+    const rotButton = document.createElement('a-box');
+    rotButton.setAttribute('position', '0 0 0');
+    rotButton.setAttribute('width', '0.2');
+    rotButton.setAttribute('height', '0.1');
+    rotButton.setAttribute('depth', '0.05');
+    rotButton.setAttribute('material', 'color: #666666');
+    rotButton.setAttribute('data-mode', 'rotation');
+    rotButton.setAttribute('data-model-id', modelId);
+    rotButton.classList.add('gizmo-mode-button');
+    modeButtons.appendChild(rotButton);
+
+    const rotText = document.createElement('a-text');
+    rotText.setAttribute('value', 'ROT');
+    rotText.setAttribute('position', '0 0 0.05');
+    rotText.setAttribute('align', 'center');
+    rotText.setAttribute('color', '#ffffff');
+    rotText.setAttribute('scale', '0.5 0.5 0.5');
+    modeButtons.appendChild(rotText);
+
+    // Scale mode button
+    const scaleButton = document.createElement('a-box');
+    scaleButton.setAttribute('position', '0.3 0 0');
+    scaleButton.setAttribute('width', '0.2');
+    scaleButton.setAttribute('height', '0.1');
+    scaleButton.setAttribute('depth', '0.05');
+    scaleButton.setAttribute('material', 'color: #666666');
+    scaleButton.setAttribute('data-mode', 'scale');
+    scaleButton.setAttribute('data-model-id', modelId);
+    scaleButton.classList.add('gizmo-mode-button');
+    modeButtons.appendChild(scaleButton);
+
+    const scaleText = document.createElement('a-text');
+    scaleText.setAttribute('value', 'SCALE');
+    scaleText.setAttribute('position', '0.3 0 0.05');
+    scaleText.setAttribute('align', 'center');
+    scaleText.setAttribute('color', '#ffffff');
+    scaleText.setAttribute('scale', '0.4 0.4 0.4');
+    modeButtons.appendChild(scaleText);
+
+    gizmo.appendChild(modeButtons);
+
+    // Add click handlers for mode switching
+    const buttons = modeButtons.querySelectorAll('.gizmo-mode-button');
+    buttons.forEach(button => {
+      button.setAttribute('raycastable', '');
+      button.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const mode = button.getAttribute('data-mode');
+        this.switchGizmoMode(modelId, mode);
+      });
+    });
+  }
+
+  switchGizmoMode(modelId, mode) {
+    const gizmo = document.querySelector(`#gizmo-additional-model-${modelId}`);
+    if (!gizmo) return;
+
+    // Update mode indicator
+    const modeIndicator = gizmo.querySelector('.gizmo-mode-indicator');
+    if (modeIndicator) {
+      modeIndicator.setAttribute('value', mode.toUpperCase());
+    }
+
+    // Update mode buttons
+    const buttons = gizmo.querySelectorAll('.gizmo-mode-button');
+    buttons.forEach(button => {
+      const buttonMode = button.getAttribute('data-mode');
+      if (buttonMode === mode) {
+        button.setAttribute('material', 'color: #ffffff');
+        button.classList.add('active');
+      } else {
+        button.setAttribute('material', 'color: #666666');
+        button.classList.remove('active');
+      }
+    });
+
+    // Show/hide gizmo elements based on mode
+    const positionElements = gizmo.querySelectorAll('.gizmo-position');
+    const rotationElements = gizmo.querySelectorAll('.gizmo-rotation');
+    const scaleElements = gizmo.querySelectorAll('.gizmo-scale');
+
+    positionElements.forEach(el => el.setAttribute('visible', mode === 'position'));
+    rotationElements.forEach(el => el.setAttribute('visible', mode === 'rotation'));
+    scaleElements.forEach(el => el.setAttribute('visible', mode === 'scale'));
+
+    // Update gizmo mode attribute
+    gizmo.setAttribute('data-gizmo-mode', mode);
+  }
+
   createWallGizmo(wall) {
     const scene = document.querySelector('a-scene');
     if (!scene) return;
@@ -7728,49 +8683,72 @@ Created: ${new Date().toLocaleString()}
   }
 
   addGizmoClickHandlers(gizmo, type, id) {
-    const arrows = gizmo.querySelectorAll('.gizmo-arrow');
-    arrows.forEach(arrow => {
+    // Handle all gizmo elements (arrows, rings, boxes)
+    const gizmoElements = gizmo.querySelectorAll('.gizmo-arrow, .gizmo-ring, .gizmo-box');
+    gizmoElements.forEach(element => {
       // Add raycaster for mouse interaction
-      arrow.setAttribute('raycastable', '');
+      element.setAttribute('raycastable', '');
       
       // Use mouse events for desktop interaction
-      arrow.addEventListener('mousedown', (e) => {
+      element.addEventListener('mousedown', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const axis = arrow.getAttribute('data-axis');
+        const axis = element.getAttribute('data-axis');
         this.handleGizmoClick(type, id, axis);
       });
 
       // Use click events as backup
-      arrow.addEventListener('click', (e) => {
+      element.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const axis = arrow.getAttribute('data-axis');
+        const axis = element.getAttribute('data-axis');
         this.handleGizmoClick(type, id, axis);
       });
 
       // Touch events for mobile - use passive: true for Safari compatibility
-      arrow.addEventListener('touchstart', (e) => {
+      element.addEventListener('touchstart', (e) => {
         // Only prevent default if we're actually handling the touch
         if (e.touches && e.touches.length > 0) {
           e.preventDefault();
         }
         e.stopPropagation();
-        const axis = arrow.getAttribute('data-axis');
+        const axis = element.getAttribute('data-axis');
         this.handleGizmoClick(type, id, axis);
       }, { passive: true });
 
       // Add hover effects
-      arrow.addEventListener('mouseenter', () => {
-        const originalColor = arrow.getAttribute('material').color;
-        arrow.setAttribute('material', `color: ${originalColor}; opacity: 0.8`);
-        arrow.setAttribute('scale', '1.2 1.2 1.2');
+      element.addEventListener('mouseenter', () => {
+        const originalMaterial = element.getAttribute('material');
+        let originalColor = '#ffffff'; // Default color
+        
+        if (typeof originalMaterial === 'string') {
+          const colorMatch = originalMaterial.match(/color:\s*([^;]+)/);
+          if (colorMatch) {
+            originalColor = colorMatch[1].trim();
+          }
+        } else if (originalMaterial && originalMaterial.color) {
+          originalColor = originalMaterial.color;
+        }
+        
+        element.setAttribute('material', `color: ${originalColor}; opacity: 0.8`);
+        element.setAttribute('scale', '1.2 1.2 1.2');
       });
 
-      arrow.addEventListener('mouseleave', () => {
-        const originalColor = arrow.getAttribute('material').color;
-        arrow.setAttribute('material', `color: ${originalColor}; opacity: 1`);
-        arrow.setAttribute('scale', '1 1 1');
+      element.addEventListener('mouseleave', () => {
+        const originalMaterial = element.getAttribute('material');
+        let originalColor = '#ffffff'; // Default color
+        
+        if (typeof originalMaterial === 'string') {
+          const colorMatch = originalMaterial.match(/color:\s*([^;]+)/);
+          if (colorMatch) {
+            originalColor = colorMatch[1].trim();
+          }
+        } else if (originalMaterial && originalMaterial.color) {
+          originalColor = originalMaterial.color;
+        }
+        
+        element.setAttribute('material', `color: ${originalColor}; opacity: 1`);
+        element.setAttribute('scale', '1 1 1');
       });
     });
   }
@@ -7782,8 +8760,12 @@ Created: ${new Date().toLocaleString()}
     
     if (type === 'wall') {
       element = this.walls.find(w => w.id === id);
-    } else {
+    } else if (type === 'ceiling') {
       element = this.ceilings.find(c => c.id === id);
+    } else if (type === 'additional-model') {
+      // Handle additional model manipulation
+      this.handleAdditionalModelGizmoClick(id, axis);
+      return;
     }
 
     if (!element) {
@@ -7821,6 +8803,250 @@ Created: ${new Date().toLocaleString()}
     this.updateEditorInputs(type, id, element);
   }
 
+  handleAdditionalModelGizmoClick(modelId, axis) {
+    console.log('Additional model gizmo clicked!', { modelId, axis });
+    
+    // Find the additional model in the current exhibit
+    if (!this.currentModel || !this.currentModel.exhibit.additionalModels) {
+      console.log('No current model or additional models found');
+      return;
+    }
+
+    const additionalModel = this.currentModel.exhibit.additionalModels.find(m => m.id === modelId);
+    if (!additionalModel) {
+      console.log('Additional model not found:', modelId);
+      return;
+    }
+
+    // Get the gizmo to determine the current mode
+    const gizmo = document.querySelector(`#gizmo-additional-model-${modelId}`);
+    const gizmoMode = gizmo ? gizmo.getAttribute('data-gizmo-mode') : 'position';
+
+    if (gizmoMode === 'position') {
+      this.handlePositionGizmoClick(additionalModel, axis);
+    } else if (gizmoMode === 'rotation') {
+      this.handleRotationGizmoClick(additionalModel, axis);
+    } else if (gizmoMode === 'scale') {
+      this.handleScaleGizmoClick(additionalModel, axis);
+    }
+    
+    // Update the 3D scene
+    this.updateAdditionalModelInScene(additionalModel);
+    this.updateAdditionalModelGizmo(modelId);
+    
+    // Update the editor inputs
+    this.updateAdditionalModelEditorInputs(modelId, additionalModel);
+  }
+
+  handlePositionGizmoClick(additionalModel, axis) {
+    // Parse current position
+    const currentPos = additionalModel.position.split(' ').map(Number);
+    const step = 0.5;
+
+    // Update position based on axis
+    if (axis === 'x+') {
+      currentPos[0] += step;
+    } else if (axis === 'x-') {
+      currentPos[0] -= step;
+    } else if (axis === 'y+') {
+      currentPos[1] += step;
+    } else if (axis === 'y-') {
+      currentPos[1] -= step;
+    } else if (axis === 'z+') {
+      currentPos[2] += step;
+    } else if (axis === 'z-') {
+      currentPos[2] -= step;
+    }
+
+    // Update the model data
+    additionalModel.position = currentPos.join(' ');
+  }
+
+  handleRotationGizmoClick(additionalModel, axis) {
+    // Parse current rotation
+    const currentRot = additionalModel.rotation.split(' ').map(Number);
+    const step = 15; // 15 degrees per click
+
+    // Update rotation based on axis
+    if (axis === 'x') {
+      currentRot[0] += step;
+    } else if (axis === 'y') {
+      currentRot[1] += step;
+    } else if (axis === 'z') {
+      currentRot[2] += step;
+    }
+
+    // Normalize rotation to 0-360 range
+    currentRot[0] = ((currentRot[0] % 360) + 360) % 360;
+    currentRot[1] = ((currentRot[1] % 360) + 360) % 360;
+    currentRot[2] = ((currentRot[2] % 360) + 360) % 360;
+
+    // Update the model data
+    additionalModel.rotation = currentRot.join(' ');
+  }
+
+  handleScaleGizmoClick(additionalModel, axis) {
+    // Parse current scale
+    const currentScale = additionalModel.scale.split(' ').map(Number);
+    const step = 0.1;
+
+    // Update scale based on axis
+    if (axis === 'x+') {
+      currentScale[0] += step;
+    } else if (axis === 'x-') {
+      currentScale[0] = Math.max(0.1, currentScale[0] - step); // Prevent negative scale
+    } else if (axis === 'y+') {
+      currentScale[1] += step;
+    } else if (axis === 'y-') {
+      currentScale[1] = Math.max(0.1, currentScale[1] - step);
+    } else if (axis === 'z+') {
+      currentScale[2] += step;
+    } else if (axis === 'z-') {
+      currentScale[2] = Math.max(0.1, currentScale[2] - step);
+    }
+
+    // Check if scale lock is enabled
+    const scaleLockCheckbox = document.getElementById(`scale-lock-${additionalModel.id}`);
+    const isScaleLocked = scaleLockCheckbox ? scaleLockCheckbox.checked : false;
+
+    if (isScaleLocked) {
+      // Apply the same scale to all axes
+      const avgScale = (currentScale[0] + currentScale[1] + currentScale[2]) / 3;
+      currentScale[0] = avgScale;
+      currentScale[1] = avgScale;
+      currentScale[2] = avgScale;
+    }
+
+    // Update the model data
+    additionalModel.scale = currentScale.join(' ');
+  }
+
+  updateAdditionalModelInScene(additionalModel) {
+    console.log('updateAdditionalModelInScene called with:', additionalModel);
+    console.log('Looking for entity with ID:', additionalModel.id);
+    
+    // Try multiple ways to find the entity
+    const modelEntity = document.getElementById(`model-${additionalModel.id}`);
+    console.log('Found model entity via getElementById:', modelEntity);
+    
+    if (!modelEntity) {
+      // Try searching within the exhibit
+      const exhibitEntity = document.getElementById(this.currentModel?.exhibit?.id);
+      if (exhibitEntity) {
+        const entityInExhibit = exhibitEntity.querySelector(`#${additionalModel.id}`);
+        console.log('Found entity in exhibit:', entityInExhibit);
+      }
+      
+      // List all entities with similar IDs
+      const allEntities = document.querySelectorAll('[id*="' + additionalModel.id + '"]');
+      console.log('All entities with similar ID:', allEntities);
+    }
+    
+    if (modelEntity) {
+      console.log('Updating model attributes:');
+      console.log('Position:', additionalModel.position);
+      console.log('Rotation:', additionalModel.rotation);
+      console.log('Scale:', additionalModel.scale);
+      
+      // Get current attributes before updating
+      const currentPos = modelEntity.getAttribute('position');
+      const currentRot = modelEntity.getAttribute('rotation');
+      const currentScale = modelEntity.getAttribute('scale');
+      console.log('Current position before update:', currentPos);
+      console.log('Current rotation before update:', currentRot);
+      console.log('Current scale before update:', currentScale);
+      
+      // Parse the string values to numbers
+      const pos = additionalModel.position.split(' ').map(Number);
+      const rot = additionalModel.rotation.split(' ').map(Number);
+      const scale = additionalModel.scale.split(' ').map(Number);
+      
+      console.log('Parsed values:', { pos, rot, scale });
+      
+      // Update the entity's attributes with string format
+      modelEntity.setAttribute('position', additionalModel.position);
+      modelEntity.setAttribute('rotation', additionalModel.rotation);
+      modelEntity.setAttribute('scale', additionalModel.scale);
+      
+      // Update the THREE.js object directly for immediate visual feedback
+      if (modelEntity.object3D) {
+        modelEntity.object3D.position.set(pos[0], pos[1], pos[2]);
+        modelEntity.object3D.rotation.set(
+          THREE.MathUtils.degToRad(rot[0]),
+          THREE.MathUtils.degToRad(rot[1]),
+          THREE.MathUtils.degToRad(rot[2])
+        );
+        modelEntity.object3D.scale.set(scale[0], scale[1], scale[2]);
+        
+        console.log('Updated THREE.js object directly');
+      }
+      
+      // Verify the attributes were set
+      const newPos = modelEntity.getAttribute('position');
+      const newRot = modelEntity.getAttribute('rotation');
+      const newScale = modelEntity.getAttribute('scale');
+      console.log('New position after update:', newPos);
+      console.log('New rotation after update:', newRot);
+      console.log('New scale after update:', newScale);
+      
+      console.log('Model entity updated successfully');
+    } else {
+      console.error('Model entity not found in scene:', additionalModel.id);
+      console.log('Available entities with similar IDs:');
+      const allEntities = document.querySelectorAll('[id*="additional_model"]');
+      allEntities.forEach(entity => console.log('Found entity:', entity.id));
+    }
+  }
+
+  updateAdditionalModelGizmo(modelId) {
+    const gizmo = document.querySelector(`#gizmo-additional-model-${modelId}`);
+    if (gizmo) {
+      const modelEntity = document.getElementById(`model-${modelId}`);
+      if (modelEntity) {
+        const position = modelEntity.getAttribute('position');
+        gizmo.setAttribute('position', position);
+      }
+    }
+  }
+
+  updateAdditionalModelEditorInputs(modelId, additionalModel) {
+    // Find the model item in the UI
+    const modelItem = document.querySelector(`[data-model-id="${modelId}"]`);
+    if (modelItem) {
+      // Update name input if it exists
+      const nameInput = modelItem.querySelector('.additional-model-name');
+      if (nameInput) {
+        nameInput.value = additionalModel.name || '';
+      }
+      
+      // Update position inputs if they exist
+      const positionInputs = modelItem.querySelectorAll('.property-group:nth-of-type(3) .position-input input');
+      if (positionInputs.length >= 3) {
+        const pos = additionalModel.position.split(' ').map(Number);
+        positionInputs[0].value = pos[0]; // X
+        positionInputs[1].value = pos[1]; // Y
+        positionInputs[2].value = pos[2]; // Z
+      }
+      
+      // Update rotation inputs if they exist
+      const rotationInputs = modelItem.querySelectorAll('.property-group:nth-of-type(4) .position-input input');
+      if (rotationInputs.length >= 3) {
+        const rot = additionalModel.rotation.split(' ').map(Number);
+        rotationInputs[0].value = rot[0]; // X
+        rotationInputs[1].value = rot[1]; // Y
+        rotationInputs[2].value = rot[2]; // Z
+      }
+      
+      // Update scale inputs if they exist
+      const scaleInputs = modelItem.querySelectorAll('.property-group:nth-of-type(5) .position-input input');
+      if (scaleInputs.length >= 3) {
+        const scale = additionalModel.scale.split(' ').map(Number);
+        scaleInputs[0].value = scale[0]; // X
+        scaleInputs[1].value = scale[1]; // Y
+        scaleInputs[2].value = scale[2]; // Z
+      }
+    }
+  }
 
   updateWallGizmo(wall) {
     const gizmo = document.querySelector(`#gizmo-wall-${wall.id}`);
