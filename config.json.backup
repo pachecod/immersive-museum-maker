@@ -1,5 +1,5 @@
 {
-  "name": "Agriquest Museum",
+  "name": "Immersive Museum",
   "created": "2025-01-27T00:00:00.000Z",
   "version": "1.0",
   "description": "Interactive Museum for educational purposes",
@@ -88,7 +88,7 @@
       "position": "0 -1.6 0",
       "size": "4 0.8",
       "content": {
-        "default": "Welcome to the Agriquest Garden Museum! Explore vegetables and garden tools in this interactive 3D exhibit. Click on the hotspots to learn more about each item.",
+        "default": "Welcome to the Immersive Museum! Explore exhibits and artifacts in this interactive 3D experience. Click on the hotspots to learn more about each item.",
         "wheelbarrow": "Wheelbarrows are essential garden tools that make transporting soil, plants, and materials much easier. They help gardeners work more efficiently.",
         "onion": "Onions add flavor to countless dishes worldwide. They contain compounds that may help reduce inflammation and promote heart health."
       }

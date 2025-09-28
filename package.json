@@ -1,7 +1,7 @@
 {
   "name": "immersivemuseum_v2",
   "version": "1.0.0",
-  "description": "## About This Project This is a demo virtual world for Syracuse University's Agriquest project in which children in an after-school program learn about food, storytelling and immersive storytelling. It is built using the A-Frame WebXR platform along with custom JavaScript components that enhance the user experience across desktop, mobile, and VR platforms.",
+  "description": "## About This Project This is a web-based tool for creating immersive 3D museum experiences and virtual exhibitions. Build interactive VR/AR-ready environments with drag-and-drop simplicity, complete with 3D models, audio, lighting, and custom walls and ceilings. It is built using the A-Frame WebXR platform along with custom JavaScript components that enhance the user experience across desktop, mobile, and VR platforms.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
