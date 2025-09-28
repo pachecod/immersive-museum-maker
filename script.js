@@ -4349,7 +4349,8 @@ class ModelEditor {
 
     try {
       // Generate the complete HTML content
-      const htmlContent = this.generateStandaloneHTML();
+      const currentConfig = this.museumProject?.config || window.museumConfig;
+      const htmlContent = this.generateStandaloneHTML(currentConfig);
       
       const blob = new Blob([htmlContent], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
@@ -4368,19 +4369,19 @@ class ModelEditor {
     }
   }
 
-  generateStandaloneHTML() {
+  generateStandaloneHTML(config = null) {
     // Re-enable gaze cursor for exported scenes
     this.enableGazeCursorForExport();
     
     // Generate a complete HTML file with the 3D scene
-    const config = museumConfig;
+    const museumConfig = config || this.museumProject?.config || window.museumConfig;
     
     console.log('🔧 generateStandaloneHTML - Using config:');
-    console.log('  Audio1 URL:', config.assets?.audio?.audio1);
-    console.log('  AudioCarrots URL:', config.assets?.audio?.audiocarrots);
-    console.log('  AudioOnion URL:', config.assets?.audio?.audioonion);
-    console.log('  Ambient URL:', config.assets?.audio?.ambient);
-    console.log('  Click URL:', config.assets?.audio?.click);
+    console.log('  Audio1 URL:', museumConfig.assets?.audio?.audio1);
+    console.log('  AudioCarrots URL:', museumConfig.assets?.audio?.audiocarrots);
+    console.log('  AudioOnion URL:', museumConfig.assets?.audio?.audioonion);
+    console.log('  Ambient URL:', museumConfig.assets?.audio?.ambient);
+    console.log('  Click URL:', museumConfig.assets?.audio?.click);
     
     // Generate the A-Frame scene HTML
     let sceneHTML = `<!DOCTYPE html>
