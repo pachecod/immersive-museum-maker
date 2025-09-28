@@ -24,8 +24,8 @@
       "eggplant": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/3d/rocks_1758665910940.glb",
       "onion": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/onions_1758376229101.glb",
       "furniture-model": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/wooden-table_1758977396630.glb",
-      "lamp-model": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/3d/rocks_1758665910940.glb?t=1758930941810&t=1758975589144&t=1758976025396&t=1758977735416",
-      "door-model": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/onions_1758376229101.glb?t=1758930941811&t=1758975589144&t=1758976025397&t=1758977735416"
+      "lamp-model": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/3d/rocks_1758665910940.glb?t=1758930941810&t=1758975589144&t=1758976025396&t=1758977735416&t=1759091106623",
+      "door-model": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/onions_1758376229101.glb?t=1758930941811&t=1758975589144&t=1758976025397&t=1758977735416&t=1759091106624"
     },
     "audio": {
       "audio1": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/audio/audio1_1758484808064.mp3",
@@ -111,8 +111,8 @@
       "model": {
         "id": "furniture-model",
         "src": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/wooden-table_1758977396630.glb",
-        "position": "0 0 0",
-        "scale": "1 1 1",
+        "position": "0 -0.8 0",
+        "scale": "1.7 1.7 1.7",
         "rotation": "0 0 0",
         "castShadow": true
       },
@@ -129,7 +129,27 @@
         "info": "This is the living room with comfortable furniture.",
         "vegetableModel": "furniture-model",
         "revealAnimation": true
-      }
+      },
+      "additionalModels": [
+        {
+          "id": "additional_model_1759091119132",
+          "name": "Vegetable Salad",
+          "url": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/vegetablesalad_1758376235563.glb",
+          "position": "0 -0.1 0",
+          "rotation": "0 0 0",
+          "scale": "1.2 1.2 1.2",
+          "visible": true
+        },
+        {
+          "id": "additional_model_1759091213998",
+          "name": "Cucumber",
+          "url": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/cucumber_1758487666815.glb",
+          "position": "0 0 0",
+          "rotation": "0 0 0",
+          "scale": "2.8 2.8 2.8",
+          "visible": true
+        }
+      ]
     },
     {
       "id": "kitchen",
@@ -137,7 +157,7 @@
       "position": "10 0 -5",
       "model": {
         "id": "lamp-model",
-        "src": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/3d/rocks_1758665910940.glb?t=1758930941810&t=1758975589144&t=1758976025396&t=1758977735416",
+        "src": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/admin/3d/rocks_1758665910940.glb?t=1758930941810&t=1758975589144&t=1758976025396&t=1758977735416&t=1759091106623",
         "position": "0 1 0",
         "scale": "1 1 1",
         "rotation": "0 0 0",
@@ -164,7 +184,7 @@
       "position": "0 0 10",
       "model": {
         "id": "door-model",
-        "src": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/onions_1758376229101.glb?t=1758930941811&t=1758975589144&t=1758976025397&t=1758977735416",
+        "src": "https://slrztqodtgjgexmeihdc.supabase.co/storage/v1/object/public/files/common-assets/3d/onions_1758376229101.glb?t=1758930941811&t=1758975589144&t=1758976025397&t=1758977735416&t=1759091106624",
         "position": "0 1 0",
         "scale": "1 1 1",
         "rotation": "0 0 0",

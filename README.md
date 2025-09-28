@@ -35,18 +35,23 @@ The Immersive Museum Maker transforms the complex process of creating 3D virtual
 
 ### **Content Management**
 - **3D Model Support**: Import GLB/GLTF models with automatic positioning
+- **Additional Models**: Add multiple 3D models per exhibit with individual controls
+- **Model Manipulation**: Position, rotate, and scale models with precision controls
+- **Scale Lock**: Uniform scaling option for maintaining proportions
 - **Texture System**: Apply custom textures with tiling and brightness controls
 - **Color Customization**: Full color picker for walls, ceilings, and materials
 - **Audio Integration**: Ambient sounds, click effects, and spatial audio
 
 ### **Interactivity**
 - **Hotspots**: Clickable information points throughout the experience
+- **Model Animations**: Interactive model animations triggered by hotspot interactions
 - **Labels & Text**: Floating labels and information panels
 - **Navigation**: Smooth camera controls and teleportation
 - **VR Support**: Full compatibility with Meta Quest and other VR headsets
 
 ### **Cross-Platform**
 - **Mobile Optimized**: Touch controls and responsive design
+- **Enhanced Mobile Controls**: One-thumb forward, two-thumb backward movement
 - **Desktop Ready**: WASD keyboard navigation
 - **VR Compatible**: Works with Meta Quest, HTC Vive, and other headsets
 - **Web Standards**: Built on A-Frame for maximum compatibility
@@ -131,6 +136,10 @@ immersive-museum-maker/
 
 ### Editor Tools
 - **Real-time Updates**: Changes appear instantly in 3D preview
+- **Lighting Controls**: Adjust ambient and directional lighting with number inputs
+- **Model Gizmos**: Visual manipulation tools for precise positioning
+- **Additional Models**: Add multiple 3D models per exhibit with individual controls
+- **Scale Lock**: Uniform scaling option for maintaining model proportions
 - **Undo/Redo**: Full editing history with rollback capability
 - **Import/Export**: Save and load project configurations
 - **Collaboration**: Multiple users can work on the same project

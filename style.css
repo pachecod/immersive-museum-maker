@@ -497,6 +497,13 @@ body {
   box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
 }
 
+.property-group input:disabled {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+  cursor: not-allowed;
+}
+
 .property-group input::placeholder,
 .property-group textarea::placeholder {
   color: rgba(255, 255, 255, 0.5);
@@ -528,6 +535,8 @@ body {
   gap: 8px;
   align-items: center;
   margin-bottom: 8px;
+  flex-wrap: wrap;
+  min-width: 100%;
 }
 
 .additional-model-item .url-input-container input {
@@ -566,6 +575,8 @@ body {
 
 .additional-model-item .action-btn.delete {
   background: #f44336;
+  min-width: 60px;
+  flex-shrink: 0;
 }
 
 .additional-model-item .action-btn.delete:hover {
@@ -664,6 +675,44 @@ body {
   margin-top: 5px;
   color: rgba(255, 255, 255, 0.6);
   font-size: 12px;
+}
+
+/* Lighting Controls */
+.lighting-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.lighting-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lighting-input label {
+  min-width: 180px;
+  font-size: 14px;
+  color: #e0e0e0;
+}
+
+.lighting-input input[type="number"] {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: white;
+  font-size: 14px;
+  width: 100px;
+}
+
+.lighting-input input[type="number"]:focus {
+  outline: none;
+  border-color: #4CAF50;
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
 }
 
 .editor-actions,
