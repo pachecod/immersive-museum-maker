@@ -1,0 +1,24 @@
+{
+  "assets": [
+    {
+      "name": "Sample Model",
+      "url": "https://example.com/models/spaceship.glb",
+      "type": "model",
+      "thumbnail": "https://example.com/thumbs/spaceship.jpg"
+    },
+    {
+      "name": "Gallery Panorama",
+      "url": "https://example.com/images/panorama-360.jpg",
+      "type": "image",
+      "thumbnail": "https://example.com/thumbs/panorama.jpg"
+    },
+    {
+      "name": "Ambient Track",
+      "url": "https://example.com/audio/ambient.mp3",
+      "type": "audio",
+      "thumbnail": ""
+    }
+  ]
+}
+
+
