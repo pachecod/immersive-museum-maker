@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Admin Tools</title>
+    <link rel="icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        html, body { height: auto; min-height: 100%; overflow-y: auto; }
+        .container { max-width: 960px; margin: 0 auto; padding: 24px; }
+        .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 12px 0; background: #fff; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+        .muted { color: #666; font-size: 14px; }
+        h1 { margin-top: 0; }
+        button { cursor: pointer; }
+        .row { display: flex; gap: 8px; align-items: center; }
+        input[type="text"] { width: 100%; padding: 8px; }
+        .success { color: #0a7a29; }
+        .error { color: #a00; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+        /* Preview modal */
+        .asset-preview-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 10002; }
+        .asset-preview-modal { background: #fff; width: min(92vw, 980px); max-height: 86vh; border-radius: 10px; padding: 16px; overflow: auto; }
+        .asset-preview-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .asset-preview-body { display: flex; align-items: center; justify-content: center; min-height: 300px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Admin Tools</h1>
+        <p class="muted">Experimental admin portal. Keep this page private.</p>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Health Check</h2>
+                <p class="muted">Ping the server health endpoint.</p>
+                <div class="row">
+                    <button id="btnHealth">Check /health</button>
+                    <span id="healthResult" class="muted"></span>
+                </div>
+                <pre id="healthJson" class="mono muted"></pre>
+            </div>
+
+            <div class="card">
+                <h2>Templates</h2>
+                <p class="muted">Open editors for common templates.</p>
+                <div class="row">
+                    <a href="/outdoor-exploration" target="_blank">Outdoor Exploration</a>
+                    <a href="/house" target="_blank">House</a>
+                    <a href="/classroom" target="_blank">Classroom</a>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Hosted Projects</h2>
+                <p class="muted">Browse hosted student projects.</p>
+                <div id="hostedList" class="muted">Loading...</div>
+            </div>
+
+            <div class="card" style="grid-column: 1 / -1;">
+                <h2>Asset Library</h2>
+                <p class="muted">Add sample asset URLs users can browse in the editor.</p>
+                <div class="row" style="flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+                    <div>
+                        <label class="muted" style="display:block; margin-bottom:4px;">Import JSON</label>
+                        <input id="assetImportFile" type="file" accept="application/json">
+                    </div>
+                    <div>
+                        <label class="muted" style="display:block; margin-bottom:4px;">Mode</label>
+                        <select id="assetImportMode">
+                            <option value="merge">Merge (default)</option>
+                            <option value="replace">Replace</option>
+                        </select>
+                    </div>
+                    <button id="assetImportBtn">Import</button>
+                    <a href="/templates/asset-library-template.json" download>Download JSON Template</a>
+                    <span id="assetImportStatus" class="muted"></span>
+                </div>
+                <div style="margin-top: 10px;">
+                    <label class="muted" style="display:block; margin-bottom:6px;">Or paste JSON below</label>
+                    <textarea id="assetImportTextarea" rows="6" placeholder='{"assets": [ { "name": "Sample", "url": "https://...", "type": "image" } ] }' style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"></textarea>
+                    <div class="row" style="margin-top: 8px; gap: 10px; align-items: center;">
+                        <select id="assetPasteMode">
+                            <option value="merge">Merge (default)</option>
+                            <option value="replace">Replace</option>
+                        </select>
+                        <button id="assetPasteImportBtn">Import Pasted JSON</button>
+                        <span id="assetPasteStatus" class="muted"></span>
+                    </div>
+                </div>
+                <form id="assetForm" class="row" onsubmit="return false;" style="flex-wrap: wrap; gap: 12px;">
+                    <input id="assetName" type="text" placeholder="Name (optional)" style="flex:1; min-width: 180px;">
+                    <input id="assetUrl" type="url" placeholder="https://asset-url" style="flex:2; min-width: 260px;">
+                    <input id="assetThumb" type="url" placeholder="Thumbnail (optional)" style="flex:2; min-width: 220px;">
+                    <select id="assetType" style="min-width: 140px;">
+                        <option value="">Type (optional)</option>
+                        <option value="model">Model (.glb/.gltf)</option>
+                        <option value="image">Image</option>
+                        <option value="audio">Audio</option>
+                        <option value="video">Video</option>
+                    </select>
+                    <button id="addAssetBtn">+ Add</button>
+                </form>
+                <div id="assetStatus" class="muted" style="margin-top: 6px;"></div>
+                <div class="row" style="margin-top: 12px; gap: 10px; align-items: center;">
+                    <label class="muted">Filter by type</label>
+                    <select id="assetListFilter">
+                        <option value="">All</option>
+                        <option value="model">Model</option>
+                        <option value="image">Image</option>
+                        <option value="audio">Audio</option>
+                        <option value="video">Video</option>
+                    </select>
+                </div>
+                <div id="assetsList" style="margin-top: 8px; border: 1px solid #eee; border-radius: 8px; padding: 8px;">
+                    Loading assets...
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Submissions Log (recent)</h2>
+            <p class="muted">From <code>submissions.json</code></p>
+            <div id="subs" class="muted">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+    async function getJson(url) {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        return res.json();
+    }
+
+    document.getElementById('btnHealth').addEventListener('click', async () => {
+        const statusEl = document.getElementById('healthResult');
+        const preEl = document.getElementById('healthJson');
+        statusEl.textContent = 'Checking...';
+        preEl.textContent = '';
+        try {
+            const data = await getJson('/health');
+            statusEl.textContent = 'OK';
+            statusEl.className = 'success';
+            preEl.textContent = JSON.stringify(data, null, 2);
+        } catch (e) {
+            statusEl.textContent = 'Error';
+            statusEl.className = 'error';
+            preEl.textContent = e.message;
+        }
+    });
+
+    async function loadHosted() {
+        // Build a simple directory listing client-side by fetching /hosted index may be disabled.
+        // As fallback, we infer from submissions list where isHosted === true.
+        try {
+            const subs = await getJson('/professor/submissions');
+            const hosted = subs.filter(s => s.isHosted && s.hostedUrl);
+            const container = document.getElementById('hostedList');
+            if (!hosted.length) { container.textContent = 'None'; return; }
+            const ul = document.createElement('ul');
+            hosted.forEach(s => {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                a.href = s.hostedUrl;
+                a.target = '_blank';
+                a.textContent = `${s.projectName || 'project'} — ${s.studentName || 'student'}`;
+                li.appendChild(a);
+                ul.appendChild(li);
+            });
+            container.innerHTML = '';
+            container.appendChild(ul);
+        } catch (e) {
+            document.getElementById('hostedList').textContent = 'Error loading hosted list';
+        }
+    }
+
+    async function loadSubmissions() {
+        try {
+            const subs = await getJson('/professor/submissions');
+            const container = document.getElementById('subs');
+            if (!subs.length) { container.textContent = 'No submissions yet'; return; }
+            const recent = subs.slice(-10).reverse();
+            const table = document.createElement('table');
+            table.innerHTML = `<thead><tr><th>Student</th><th>Project</th><th>Hosted</th><th>Submitted</th></tr></thead>`;
+            const tbody = document.createElement('tbody');
+            recent.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${s.studentName || ''}</td><td>${s.projectName || ''}</td><td>${s.isHosted ? 'Yes' : 'No'}</td><td>${new Date(s.submittedAt).toLocaleString()}</td>`;
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            container.innerHTML = '';
+            container.appendChild(table);
+        } catch (e) {
+            document.getElementById('subs').textContent = 'Error loading submissions';
+        }
+    }
+
+    loadHosted();
+    loadSubmissions();
+
+    // Asset library management
+    let __assetCache = [];
+    function renderAssets(){
+        const listEl = document.getElementById('assetsList');
+        const t = (document.getElementById('assetListFilter').value || '').toLowerCase();
+        const assets = __assetCache.filter(a => !t || (String(a.type||'').toLowerCase() === t));
+        if (!assets.length) { listEl.textContent = 'No assets yet'; return; }
+            const table = document.createElement('table');
+        table.style.width = '100%';
+            table.innerHTML = '<thead><tr><th style="text-align:left;">Name</th><th style="text-align:left;">URL</th><th>Type</th><th>Thumb</th><th>Actions</th></tr></thead>';
+        const tbody = document.createElement('tbody');
+        assets.forEach(a => {
+            const tr = document.createElement('tr');
+            const thumbHtml = a.thumbnail ? `<img src="${a.thumbnail}" alt="thumb" style="width:48px;height:32px;object-fit:cover;border-radius:4px;">` : '';
+                const safeUrl = a.url || '';
+                const actions = `
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <button class="previewAsset" data-url="${safeUrl}" data-type="${a.type||''}" data-name="${(a.name||'').replace(/"/g,'&quot;')}">Preview</button>
+                    ${safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener" download>Download</a>` : ''}
+                    <button data-id="${a.id}" class="delAsset">Delete</button>
+                  </div>`;
+                tr.innerHTML = `<td>${a.name || ''}</td><td class="mono" style="max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${safeUrl}</td><td>${a.type || ''}</td><td>${thumbHtml}</td><td>${actions}</td>`;
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        listEl.innerHTML = '';
+        listEl.appendChild(table);
+        listEl.querySelectorAll('.delAsset').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                if (!id) return;
+                if (!confirm('Delete this asset?')) return;
+                try {
+                    const r = await fetch(`/api/assets/${id}`, { method: 'DELETE' });
+                    if (r.ok) await refreshAssets();
+                } catch {}
+            });
+        });
+            listEl.querySelectorAll('.previewAsset').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const el = e.currentTarget;
+                    const url = el.getAttribute('data-url') || '';
+                    const type = (el.getAttribute('data-type') || '').toLowerCase();
+                    const name = el.getAttribute('data-name') || '';
+                    showAssetPreview({ url, type, name });
+                });
+            });
+    }
+
+    async function refreshAssets(){
+        const listEl = document.getElementById('assetsList');
+        try {
+            const res = await fetch('/api/assets');
+            const data = await res.json();
+            __assetCache = (data && data.assets) || [];
+            renderAssets();
+        } catch (e) {
+            listEl.textContent = 'Error loading assets';
+        }
+    }
+
+    document.getElementById('addAssetBtn').addEventListener('click', async () => {
+        const status = document.getElementById('assetStatus');
+        status.textContent = '';
+        const url = document.getElementById('assetUrl').value.trim();
+        const name = document.getElementById('assetName').value.trim();
+        const thumbnail = document.getElementById('assetThumb').value.trim();
+        const type = document.getElementById('assetType').value;
+        if (!url) { status.textContent = 'URL is required'; status.className='error'; return; }
+        try {
+            const res = await fetch('/api/assets', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ url, name, thumbnail, type }) });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.error || 'Failed');
+            status.textContent = 'Added'; status.className='success';
+            document.getElementById('assetUrl').value = '';
+            document.getElementById('assetName').value = '';
+            document.getElementById('assetThumb').value = '';
+            document.getElementById('assetType').value = '';
+            refreshAssets();
+            setTimeout(()=>{ status.textContent=''; status.className='muted'; }, 1000);
+        } catch (e) {
+            status.textContent = e.message;
+            status.className = 'error';
+        }
+    });
+
+    document.getElementById('assetListFilter').addEventListener('change', renderAssets);
+    refreshAssets();
+
+    // Preview modal (image, audio, video, model .glb/.gltf)
+    const backdrop = document.createElement('div');
+    backdrop.className = 'asset-preview-backdrop';
+    backdrop.innerHTML = `
+      <div class="asset-preview-modal">
+        <div class="asset-preview-header">
+          <div id="assetPreviewTitle" style="font-weight:600;">Preview</div>
+          <button id="assetPreviewClose">Close</button>
+        </div>
+        <div id="assetPreviewBody" class="asset-preview-body"></div>
+      </div>`;
+    document.body.appendChild(backdrop);
+    function closePreview(){ backdrop.style.display = 'none'; document.getElementById('assetPreviewBody').innerHTML = ''; }
+    backdrop.addEventListener('click', (e)=>{ if (e.target === backdrop) closePreview(); });
+    document.getElementById('assetPreviewClose')?.addEventListener('click', closePreview);
+    function showAssetPreview(asset){
+        const body = document.getElementById('assetPreviewBody');
+        const title = document.getElementById('assetPreviewTitle');
+        title.textContent = asset.name || 'Preview';
+        body.innerHTML = '';
+        const url = asset.url || '';
+        const type = (asset.type || '').toLowerCase();
+        if (type === 'image' || (/\.(jpg|jpeg|png|gif|webp)$/i.test(url))) {
+            const img = document.createElement('img');
+            img.src = url; img.alt = asset.name || 'image'; img.style.maxWidth = '100%'; img.style.maxHeight = '70vh';
+            body.appendChild(img);
+        } else if (type === 'audio' || (/\.(mp3|wav|ogg)$/i.test(url))) {
+            const audio = document.createElement('audio');
+            audio.controls = true; audio.src = url; audio.style.width = '100%';
+            body.appendChild(audio);
+        } else if (type === 'video' || (/\.(mp4|webm|ogv)$/i.test(url))) {
+            const video = document.createElement('video');
+            video.controls = true; video.src = url; video.style.maxWidth = '100%'; video.style.maxHeight = '70vh';
+            body.appendChild(video);
+        } else if (type === 'model' || (/\.(glb|gltf)$/i.test(url))) {
+            const mv = document.createElement('model-viewer');
+            mv.src = url;
+            mv.style.width = '100%'; mv.style.height = '70vh';
+            mv.setAttribute('camera-controls', '');
+            mv.setAttribute('exposure', '1');
+            mv.setAttribute('shadow-intensity', '0.5');
+            body.appendChild(mv);
+            // Ensure model-viewer script is present
+            if (!document.getElementById('mv-script')) {
+                const s = document.createElement('script');
+                s.type = 'module'; s.id = 'mv-script';
+                s.src = 'https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js';
+                document.head.appendChild(s);
+            }
+        } else {
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.textContent = 'Open in new tab';
+            body.appendChild(a);
+        }
+        backdrop.style.display = 'flex';
+    }
+
+    // Import JSON handlers
+    document.getElementById('assetImportBtn').addEventListener('click', async () => {
+        const status = document.getElementById('assetImportStatus');
+        status.textContent = '';
+        const fileInput = document.getElementById('assetImportFile');
+        const mode = document.getElementById('assetImportMode').value || 'merge';
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) { status.textContent = 'Choose a JSON file'; status.className='error'; return; }
+        try {
+            const text = await file.text();
+            const json = JSON.parse(text);
+            if (!Array.isArray(json.assets)) { throw new Error('Expected an object with an "assets" array'); }
+            const res = await fetch('/api/assets/import', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ assets: json.assets, mode }) });
+            const raw = await res.text();
+            let data;
+            try { data = JSON.parse(raw); } catch(_) {
+                throw new Error(`Server returned ${res.status}. Response not JSON: ${raw.slice(0,120)}...`);
+            }
+            if (!res.ok || !data.success) throw new Error(data.error || 'Import failed');
+            status.textContent = `Imported. Total assets: ${data.count}`; status.className='success';
+            await refreshAssets();
+            setTimeout(()=>{ status.textContent=''; status.className='muted'; }, 1500);
+        } catch(e) {
+            status.textContent = e.message; status.className='error';
+        }
+    });
+
+    document.getElementById('assetPasteImportBtn').addEventListener('click', async () => {
+        const status = document.getElementById('assetPasteStatus');
+        status.textContent = '';
+        const text = document.getElementById('assetImportTextarea').value.trim();
+        const mode = document.getElementById('assetPasteMode').value || 'merge';
+        if (!text) { status.textContent = 'Paste JSON first'; status.className='error'; return; }
+        try {
+            const json = JSON.parse(text);
+            if (!Array.isArray(json.assets)) { throw new Error('Expected an object with an "assets" array'); }
+            const res = await fetch('/api/assets/import', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ assets: json.assets, mode }) });
+            const raw = await res.text();
+            let data;
+            try { data = JSON.parse(raw); } catch(_) {
+                throw new Error(`Server returned ${res.status}. Response not JSON: ${raw.slice(0,120)}...`);
+            }
+            if (!res.ok || !data.success) throw new Error(data.error || 'Import failed');
+            status.textContent = `Imported. Total assets: ${data.count}`; status.className='success';
+            await refreshAssets();
+            setTimeout(()=>{ status.textContent=''; status.className='muted'; }, 1500);
+        } catch(e) {
+            status.textContent = e.message; status.className='error';
+        }
+    });
+    </script>
+</body>
+</html>
+
+

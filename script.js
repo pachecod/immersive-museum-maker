@@ -2860,6 +2860,7 @@ class ModelEditor {
     modelItem.setAttribute('data-model-id', model.id);
     modelItem.setAttribute('data-model-index', index);
 
+    const urlInputId = `additional-model-url-${model.id}`;
     modelItem.innerHTML = `
       <h4>Additional Model ${index + 1}</h4>
       
@@ -2869,7 +2870,8 @@ class ModelEditor {
       </div>
       
       <div class="url-input-container">
-        <input type="url" class="additional-model-url" placeholder="https://..." value="${model.url}">
+        <input type="url" id="${urlInputId}" class="additional-model-url" placeholder="https://..." value="${model.url}">
+        <button class="action-btn browse-asset" data-target="${urlInputId}" title="Browse library">Browse</button>
         <button class="action-btn load-additional-model">Load</button>
         <button class="action-btn preview-additional-model">Preview</button>
         <button class="action-btn delete delete-additional-model">Delete</button>
