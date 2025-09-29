@@ -19,7 +19,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Serve static files from the root directory
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 
 // Professor routes (must be before static middleware)
 app.get("/professor/submissions", (req, res) => {
@@ -125,10 +125,16 @@ app.use(express.static("."));
 const submissionsDir = path.join(__dirname, "student-projects");
 const hostedDirRoot = path.join(__dirname, "hosted-projects");
 const submissionsLog = path.join(__dirname, "submissions.json");
+const assetLibraryPath = path.join(__dirname, "asset-library.json");
 
 // Ensure folders exist
 for (const dir of [submissionsDir, hostedDirRoot]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+// Ensure asset library file exists
+if (!fs.existsSync(assetLibraryPath)) {
+  fs.writeFileSync(assetLibraryPath, JSON.stringify({ assets: [] }, null, 2));
 }
 
 // Multer upload config
@@ -152,6 +158,105 @@ app.get("/", (req, res) => {
 // Serve the main VR experience at /editor
 app.get("/editor", (req, res) => {
   res.sendFile(path.join(__dirname, "editor.html"));
+});
+
+// Admin tools (experimental)
+app.get("/admin-tools", (req, res) => {
+  res.sendFile(path.join(__dirname, "admin-tools.html"));
+});
+
+// Asset Library API
+app.get('/api/assets', (req, res) => {
+  try {
+    const raw = fs.readFileSync(assetLibraryPath, 'utf8');
+    const data = JSON.parse(raw || '{"assets":[]}');
+    res.json({ success: true, assets: Array.isArray(data.assets) ? data.assets : [] });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+app.post('/api/assets', (req, res) => {
+  try {
+    const { url, name, type, thumbnail } = req.body || {};
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ success: false, error: 'url is required' });
+    }
+    const raw = fs.readFileSync(assetLibraryPath, 'utf8');
+    const data = JSON.parse(raw || '{"assets":[]}');
+    const now = new Date().toISOString();
+    const asset = { id: Date.now().toString(36), url, name: name || '', type: type || '', thumbnail: thumbnail || '', createdAt: now };
+    data.assets = Array.isArray(data.assets) ? data.assets : [];
+    data.assets.push(asset);
+    fs.writeFileSync(assetLibraryPath, JSON.stringify(data, null, 2));
+    res.json({ success: true, asset });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+app.delete('/api/assets/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const raw = fs.readFileSync(assetLibraryPath, 'utf8');
+    const data = JSON.parse(raw || '{"assets":[]}');
+    const before = (data.assets || []).length;
+    data.assets = (data.assets || []).filter(a => a.id !== id);
+    const after = data.assets.length;
+    fs.writeFileSync(assetLibraryPath, JSON.stringify(data, null, 2));
+    res.json({ success: true, removed: before - after });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// Bulk import assets: expects { assets: [...], mode?: 'merge'|'replace' }
+app.post('/api/assets/import', (req, res) => {
+  try {
+    const { assets, mode } = req.body || {};
+    if (!Array.isArray(assets)) {
+      return res.status(400).json({ success: false, error: 'assets must be an array' });
+    }
+    const raw = fs.readFileSync(assetLibraryPath, 'utf8');
+    const data = JSON.parse(raw || '{"assets":[]}');
+    const current = Array.isArray(data.assets) ? data.assets : [];
+    const now = new Date().toISOString();
+
+    const normalized = assets.map((a) => ({
+      id: (a && a.id) ? String(a.id) : Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+      url: a && a.url ? String(a.url) : '',
+      name: a && a.name ? String(a.name) : '',
+      type: a && a.type ? String(a.type) : '',
+      thumbnail: a && a.thumbnail ? String(a.thumbnail) : '',
+      createdAt: a && a.createdAt ? String(a.createdAt) : now
+    })).filter(a => a.url);
+
+    let updated;
+    if (mode === 'replace') {
+      updated = normalized;
+    } else {
+      // merge by id (if present) else by url
+      const byId = new Map(current.map(a => [a.id, a]));
+      const byUrl = new Map(current.map(a => [a.url, a]));
+      for (const a of normalized) {
+        const existing = (a.id && byId.get(a.id)) || byUrl.get(a.url);
+        if (existing) {
+          existing.url = a.url;
+          existing.name = a.name;
+          existing.type = a.type;
+          existing.thumbnail = a.thumbnail;
+        } else {
+          current.push(a);
+        }
+      }
+      updated = current;
+    }
+
+    fs.writeFileSync(assetLibraryPath, JSON.stringify({ assets: updated }, null, 2));
+    res.json({ success: true, count: updated.length });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 // Template-specific routes
